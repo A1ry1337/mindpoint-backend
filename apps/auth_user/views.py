@@ -27,8 +27,8 @@ def login(request, data: UserCreateSchema):
     user = authenticate_user(data.username, data.password)
     if not user:
         raise HttpError(401, "Invalid credentials")
-    access = create_access_token(user.id)
-    refresh = create_refresh_token(user.id)
+    access = create_access_token(user.id.int)
+    refresh = create_refresh_token(user.id.int)
     return {"access": access, "refresh": refresh}
 
 @router.post("/refresh", response=TokenSchema)
@@ -36,8 +36,8 @@ def refresh_token(request, data: TokenRefreshSchema):
     user = verify_token(data.refresh, token_type="refresh")
     if not user:
         raise HttpError(401, "Invalid refresh token")
-    access = create_access_token(user.id)
-    refresh = create_refresh_token(user.id)
+    access = create_access_token(user.id.int)
+    refresh = create_refresh_token(user.id.int, replace_token=data.refresh)
     return {"access": access, "refresh": refresh}
 
 @router.get("/hello", auth=JWTAuth())
