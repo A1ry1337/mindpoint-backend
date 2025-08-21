@@ -1,9 +1,12 @@
 from ninja import Router
 from django.contrib.auth import get_user_model
+from ninja.responses import Response
+from django.conf import settings
 
 from apps.auth_user.permissions import JWTAuth
 from apps.auth_user.schemas import UserCreateSchema, UserReadSchema, TokenSchema, TokenRefreshSchema
-from apps.auth_user.services import create_access_token, create_refresh_token, authenticate_user, verify_token
+from apps.auth_user.services import create_access_token, create_refresh_token, authenticate_user, verify_token, \
+    REFRESH_TOKEN_EXPIRE_DAYS
 from ninja.errors import HttpError
 
 User = get_user_model()
@@ -22,23 +25,51 @@ def register(request, data: UserCreateSchema):
     )
     return {"message": "Пользователь успешно зарегистрирован"}
 
-@router.post("/login", response=TokenSchema)
+@router.post("/login")
 def login(request, data: UserCreateSchema):
     user = authenticate_user(data.username, data.password)
     if not user:
         raise HttpError(401, "Invalid credentials")
+
     access = create_access_token(user.id.int)
     refresh = create_refresh_token(user.id.int)
-    return {"access": access, "refresh": refresh}
 
-@router.post("/refresh", response=TokenSchema)
-def refresh_token(request, data: TokenRefreshSchema):
-    user = verify_token(data.refresh, token_type="refresh")
+    response = Response({"access": access})
+
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh,
+        httponly=True,
+        secure=not settings.DEBUG,
+        samesite="Strict",
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+    )
+    return response
+
+@router.post("/refresh")
+def refresh_token(request):
+    refresh_token_from_cookies = request.COOKIES.get("refresh_token")
+    if not refresh_token_from_cookies:
+        raise HttpError(401, "No refresh token")
+
+    user = verify_token(refresh_token_from_cookies, token_type="refresh")
     if not user:
         raise HttpError(401, "Invalid refresh token")
+
     access = create_access_token(user.id.int)
-    refresh = create_refresh_token(user.id.int, replace_token=data.refresh)
-    return {"access": access, "refresh": refresh}
+    new_refresh = create_refresh_token(user.id.int, replace_token=refresh_token_from_cookies)
+
+    response = Response({"access": access})
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh,
+        httponly=True,
+        secure=not settings.DEBUG,
+        samesite="Strict",
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
+    return response
+
 
 @router.get("/hello", auth=JWTAuth())
 def hello(request):
