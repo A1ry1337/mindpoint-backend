@@ -4,7 +4,7 @@ from ninja.responses import Response
 from django.conf import settings
 
 from apps.auth_user.permissions import JWTAuth
-from apps.auth_user.schemas import UserCreateSchema, UserReadSchema, TokenSchema, TokenRefreshSchema
+from apps.auth_user.schemas import UserCreateSchema
 from apps.auth_user.services import create_access_token, create_refresh_token, authenticate_user, verify_token, \
     REFRESH_TOKEN_EXPIRE_DAYS
 from ninja.errors import HttpError
@@ -17,7 +17,7 @@ def register(request, data: UserCreateSchema):
     user = User.objects.filter(email=data.email).first()
     if user:
         raise HttpError(400, "Пользователь с данной почтой уже существует")
-    user = User.objects.create_user(
+    User.objects.create_user(
         email=data.email or "",
         username=data.username,
         password=data.password,
@@ -46,7 +46,7 @@ def login(request, data: UserCreateSchema):
     )
     return response
 
-@router.post("/refresh")
+@router.get("/refresh")
 def refresh_token(request):
     refresh_token_from_cookies = request.COOKIES.get("refresh_token")
     if not refresh_token_from_cookies:
