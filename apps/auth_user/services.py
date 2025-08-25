@@ -68,8 +68,7 @@ def verify_token(token: str, token_type="access"):
                 db_token.delete()
                 return None
 
-        user = User.objects.filter(id=user_id, is_active=True).first()
-        return user
+        return payload
     except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
         return None
 

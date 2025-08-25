@@ -1,3 +1,4 @@
+from django.db.models import Q
 from ninja import Router
 from django.contrib.auth import get_user_model
 from ninja.responses import Response
@@ -14,9 +15,12 @@ router = Router()
 
 @router.post("/register", response=dict)
 def register(request, data: UserCreateSchema):
-    user = User.objects.filter(email=data.email).first()
+    user = User.objects.filter(
+        Q(username=data.username) |
+        (Q(email=data.email) & ~Q(email__isnull=True) & ~Q(email=""))
+    ).first()
     if user:
-        raise HttpError(400, "Пользователь с данной почтой уже существует")
+        raise HttpError(400, "Пользователь с таким никнеймом или почтой уже существует")
     User.objects.create_user(
         email=data.email or "",
         username=data.username,
@@ -52,12 +56,12 @@ def refresh_token(request):
     if not refresh_token_from_cookies:
         raise HttpError(401, "No refresh token")
 
-    user = verify_token(refresh_token_from_cookies, token_type="refresh")
-    if not user:
+    payload = verify_token(refresh_token_from_cookies, token_type="refresh")
+    if not payload:
         raise HttpError(401, "Invalid refresh token")
 
-    access = create_access_token(user.id.int)
-    new_refresh = create_refresh_token(user.id.int, replace_token=refresh_token_from_cookies)
+    access = create_access_token(payload['id'])
+    new_refresh = create_refresh_token(payload['id'], replace_token=refresh_token_from_cookies)
 
     response = Response({"access": access})
     response.set_cookie(
@@ -73,5 +77,5 @@ def refresh_token(request):
 
 @router.get("/hello", auth=JWTAuth())
 def hello(request):
-    user = request.auth
+    user = User.objects.filter(id=request.auth["user_id"]).first()
     return {"message": f"Hello, {user.username}!"}
