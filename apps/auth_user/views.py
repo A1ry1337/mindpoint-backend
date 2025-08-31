@@ -22,6 +22,7 @@ def register(request, data: UserCreateSchema):
     if user:
         raise HttpError(400, "Пользователь с таким никнеймом или почтой уже существует")
     User.objects.create_user(
+        manager= User.objects.filter(id=data.managerId).first(),
         email=data.email or "",
         username=data.username,
         password=data.password,
@@ -38,7 +39,12 @@ def login(request, data: UserCreateSchema):
     access = create_access_token(user.id.int)
     refresh = create_refresh_token(user.id.int)
 
-    response = Response({"access": access})
+    response = Response({
+        "access": access,
+        "userId": user.id,
+        "username": user.__str__(),
+        "fullname": user.full_name,
+    })
 
     response.set_cookie(
         key="refresh_token",
@@ -78,4 +84,8 @@ def refresh_token(request):
 @router.get("/hello", auth=JWTAuth())
 def hello(request):
     user = User.objects.filter(id=request.auth["user_id"]).first()
-    return {"message": f"Hello, {user.username}!"}
+    return {
+        "message": f"Hello, {user}!",
+        "СОТРУДНИКИ": f"Hello, {[employee.username for employee in user.employees.all()]}!"
+    }
+
