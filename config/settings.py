@@ -32,6 +32,7 @@ ALLOWED_HOSTS = []
 
 LOCAL_APPS = [
     'apps.auth_user',
+    'apps.assessments.dass',
 ]
 
 INSTALLED_APPS = [

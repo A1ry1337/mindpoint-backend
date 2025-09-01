@@ -5,7 +5,7 @@ from ninja.responses import Response
 from django.conf import settings
 
 from apps.auth_user.permissions import JWTAuth
-from apps.auth_user.schemas import UserCreateSchema
+from apps.auth_user.schemas import UserCreateSchema, LoginResponse
 from apps.auth_user.services import create_access_token, create_refresh_token, authenticate_user, verify_token, \
     REFRESH_TOKEN_EXPIRE_DAYS
 from ninja.errors import HttpError
@@ -30,7 +30,7 @@ def register(request, data: UserCreateSchema):
     )
     return {"message": "Пользователь успешно зарегистрирован"}
 
-@router.post("/login")
+@router.post("/login", response=LoginResponse)
 def login(request, data: UserCreateSchema):
     user = authenticate_user(data.username, data.password)
     if not user:
@@ -44,6 +44,7 @@ def login(request, data: UserCreateSchema):
         "userId": user.id,
         "username": user.__str__(),
         "fullname": user.full_name,
+        "isManager": user.is_manager,
     })
 
     response.set_cookie(
