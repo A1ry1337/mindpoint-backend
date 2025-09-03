@@ -1,6 +1,6 @@
 from ninja import Router
 from typing import List
-from django.shortcuts import get_object_or_404
+from datetime import date
 
 from .models import Dass9Result
 from .schemas import Dass9Input, Dass9Output, QuestionOutput
@@ -26,16 +26,25 @@ def save_dass9_result(request, payload: Dass9Input):
     if result is None:
         return {"message": "Вы уже проходили тест сегодня!"}
 
-    return {
+    return ({
         "date": result.date,
         "depression": result.depression_score,
         "stress": result.stress_score,
         "anxiety": result.anxiety_score
-    }
+    })
+
+@router.get("/check", auth=JWTAuth())
+def check_dass9_passed_today(request):
+    """
+    Проверка: проходил ли пользователь DASS-9 сегодня
+    """
+    user_id = request.auth["user_id"]
+    passed = Dass9Result.objects.filter(user_id=user_id, date=date.today()).exists()
+    return {"passed_today": passed}
 
 
 @router.get("/", response=List[Dass9Output], auth=JWTAuth())
-def list_dass9_results(request):
+def get_dass9_result(request):
     """
     Получить историю результатов текущего пользователя
     """
@@ -54,7 +63,7 @@ def list_dass9_results(request):
     ]
 
 @router.get("/random", response=List[QuestionOutput])
-def get_random_questions(request):
+def get_dass9_questions(request):
     """
     Получить 9 случайных вопросов (по 3 на каждую тему)
     """
