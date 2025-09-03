@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404
 from .models import Dass9Result
 from .schemas import Dass9Input, Dass9Output, QuestionOutput
 from .services import Dass9Service
+from ...auth_user.models import User
 from ...auth_user.permissions import JWTAuth
 
 router = Router()
@@ -33,20 +34,21 @@ def save_dass9_result(request, payload: Dass9Input):
     }
 
 
-@router.get("/", response=List[Dass9Output])
+@router.get("/", response=List[Dass9Output], auth=JWTAuth())
 def list_dass9_results(request):
     """
     Получить историю результатов текущего пользователя
     """
-    user =  request.user
+
+    user = User.objects.get(id=request.auth["user_id"])
     results = Dass9Result.objects.filter(user=user).order_by("-date")
+
     return [
         {
             "date": r.date,
             "depression": r.depression_score,
             "stress": r.stress_score,
             "anxiety": r.anxiety_score,
-            "total": r.total_score,
         }
         for r in results
     ]
