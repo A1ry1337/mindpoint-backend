@@ -12,17 +12,18 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
-def create_access_token(user_id: int):
+def create_access_token(user_id: int, is_manager: bool):
     expire = timezone.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {
         "user_id": user_id,
+        "is_manager": is_manager,
         "exp": int(expire.timestamp()),
         "type": "access",
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def create_refresh_token(user_id: int, *, replace_token: str | None = None) -> str | None:
+def create_refresh_token(user_id: int, is_manager: bool, *, replace_token: str | None = None) -> str | None:
     """
     Создаёт новый refresh-токен для пользователя.
 
@@ -50,6 +51,7 @@ def create_refresh_token(user_id: int, *, replace_token: str | None = None) -> s
 
     payload = {
         "user_id": user_id,
+        "is_manager": is_manager,
         "exp": int(expire.timestamp()),
         "type": "refresh",
         "jti": str(uuid4()),

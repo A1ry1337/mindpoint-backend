@@ -2,13 +2,13 @@ from typing import List
 
 from ninja import Router
 
-from apps.auth_user.permissions import JWTAuth
+from apps.auth_user.permissions import JWTAuthManager
 from apps.manager.management.schemas import EmployeeOut
 from apps.manager.management.services import EmployeeService
 
 router = Router(tags=["Management(Управление персоналом)"])
 
-@router.get("/get_all_employees", auth=JWTAuth(), response=List[EmployeeOut])
+@router.get("/get_all_employees", auth=JWTAuthManager(), response=List[EmployeeOut])
 def get_all_employees(request):
     """
     Возвращает список всех сотрудников, закреплённых за руководителем.
