@@ -11,10 +11,17 @@ from apps.auth_user.services import create_access_token, create_refresh_token, a
 from ninja.errors import HttpError
 
 User = get_user_model()
-router = Router()
+router = Router(tags=["Authentication(Аутентификация)"])
 
 @router.post("/register", response=dict)
 def register(request, data: UserCreateSchema):
+    """
+    Регистрирует нового пользователя.
+
+    - Проверяет уникальность username и email (если указан).
+    - Создаёт пользователя с указанными данными.
+    - Если указан managerId, пользователь будет привязан к этому руководителю.
+    """
     user = User.objects.filter(
         Q(username=data.username) |
         (Q(email=data.email) & ~Q(email__isnull=True) & ~Q(email=""))
@@ -32,6 +39,21 @@ def register(request, data: UserCreateSchema):
 
 @router.post("/login", response=LoginResponse)
 def login(request, data: UserCreateSchema):
+    """
+    Аутентификация пользователя.
+
+    - Принимает username и password.
+    - Если данные корректные, генерирует `access` и `refresh` токены.
+    - `refresh_token` записывается в куки.
+
+    **Возвращает:**
+    Объект с полями:
+    - `access` — JWT для авторизации запросов.
+    - `userId` — UUID пользователя.
+    - `username` — никнейм.
+    - `fullname` — полное имя.
+    - `isManager` — флаг, является ли пользователь руководителем.
+    """
     user = authenticate_user(data.username, data.password)
     if not user:
         raise HttpError(401, "Invalid credentials")
@@ -59,6 +81,13 @@ def login(request, data: UserCreateSchema):
 
 @router.get("/refresh")
 def refresh_token(request):
+    """
+    Обновление access-токена по refresh-токену.
+
+    - Читает refresh_token из cookies.
+    - Проверяет его валидность.
+    - Возвращает новый access-токен и обновляет refresh-токен в cookies.
+    """
     refresh_token_from_cookies = request.COOKIES.get("refresh_token")
     if not refresh_token_from_cookies:
         raise HttpError(401, "No refresh token")
@@ -84,6 +113,9 @@ def refresh_token(request):
 
 @router.get("/hello", auth=JWTAuth())
 def hello(request):
+    """
+    Тест запрос
+    """
     user = User.objects.filter(id=request.auth["user_id"]).first()
     return {
         "message": f"Hello, {user}!",

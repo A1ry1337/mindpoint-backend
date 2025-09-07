@@ -8,7 +8,7 @@ from .services import Dass9Service
 from ...auth_user.models import User
 from ...auth_user.permissions import JWTAuth
 
-router = Router()
+router = Router(tags=["Dass assessments(Тестирование по методике Dass)"])
 
 @router.post("/", auth=JWTAuth())
 def save_dass9_result(request, payload: Dass9Input):
