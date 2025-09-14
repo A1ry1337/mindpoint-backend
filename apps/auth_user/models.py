@@ -24,7 +24,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True, null=True, blank=True)
     full_name = models.CharField(max_length=150, blank=True)
     is_active = models.BooleanField(default=True)
-    is_staff = models.BooleanField(default=False)
     is_manager = models.BooleanField(default=False)
     manager = models.ForeignKey(
         'self',
