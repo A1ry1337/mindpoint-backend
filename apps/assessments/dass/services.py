@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Optional, List
 
 from django.db import models
 from .models import Dass9Result, Question
@@ -49,3 +50,18 @@ class Dass9Service:
             result[q_type.label] = [q.text for q in selected]
 
         return questions
+
+    @staticmethod
+    def get_results(user_id: int, from_date: Optional[date] = None, to_date: Optional[date] = None) -> List[Dass9Result]:
+        """
+        Получить результаты DASS-9 для пользователя с фильтрацией по датам
+        """
+        user = User.objects.get(id=user_id)
+        results = Dass9Result.objects.filter(user=user)
+
+        if from_date:
+            results = results.filter(date__gte=from_date)
+        if to_date:
+            results = results.filter(date__lte=to_date)
+
+        return results.order_by("-date")

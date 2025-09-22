@@ -1,5 +1,5 @@
-from ninja import Router
-from typing import List
+from ninja import Router, Query
+from typing import List, Optional
 from datetime import date
 
 from .models import Dass9Result
@@ -44,13 +44,18 @@ def check_dass9_passed_today(request):
 
 
 @router.get("/", response=List[Dass9Output], auth=JWTAuth())
-def get_dass9_result(request):
+def get_dass9_result(
+        request,
+        from_date: Optional[date] = Query(None),
+        to_date: Optional[date] = Query(None)
+):
     """
     Получить историю результатов текущего пользователя
+    с возможностью фильтрации по диапазону дат
     """
 
-    user = User.objects.get(id=request.auth["user_id"])
-    results = Dass9Result.objects.filter(user=user).order_by("-date")
+    user_id = request.auth["user_id"]
+    results = Dass9Service.get_results(user_id=user_id, from_date=from_date, to_date=to_date)
 
     return [
         {
