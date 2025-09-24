@@ -10,11 +10,15 @@ from apps.manager.management.models import Team
 class ManagementService:
     @staticmethod
     def get_all_employees_by_manager(manager_id):
-        employees = User.objects.filter(manager_id=manager_id)
+        employees = User.objects.filter(manager_id=manager_id).prefetch_related("member_teams")
         return [{
             "id": e.id,
             "username": e.username,
             "fullname": e.full_name,
+            "team": {
+                "id": team.id,
+                "name": team.name,
+            } if (team := e.member_teams.first()) else None,
         } for e in employees]
 
     @staticmethod
