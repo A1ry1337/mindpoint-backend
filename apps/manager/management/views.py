@@ -1,13 +1,14 @@
-from typing import List
+from datetime import date
+from typing import List, Optional
 
 from django.shortcuts import get_object_or_404
-from ninja import Router
+from ninja import Router, Query
 
 from apps.auth_user.models import User
 from apps.auth_user.permissions import JWTAuthManager
 from apps.manager.management.models import Team
-from apps.manager.management.schemas import EmployeeOut, TeamIn, AddMembersIn
-from apps.manager.management.services import ManagementService
+from apps.manager.management.schemas import EmployeeOut, TeamIn, AddMembersIn, TeamDass9ResultOut
+from apps.manager.management.services import ManagementService, Dass9TeamService
 
 router = Router(tags=["Management(Управление персоналом)"])
 
@@ -61,3 +62,37 @@ def get_team_members(request, team_id: str):
     """
     manager_id = request.auth["user_id"]
     return ManagementService.get_team_members(manager_id, team_id)
+
+@router.get(
+    "/dass_9_result/{team_id}",
+    auth=JWTAuthManager(),
+    response=TeamDass9ResultOut
+)
+def get_team_dass9_results(
+        request,
+        team_id: str,
+        from_date: Optional[date] = Query(None),
+        to_date: Optional[date] = Query(None),
+):
+    """
+    Усреднённые результаты DASS-9 по выбранной команде (по дням, с возможностью фильтрации по диапазону)
+    """
+    manager_id = request.auth["user_id"]
+    return Dass9TeamService.get_team_results(manager_id, team_id, from_date, to_date)
+
+
+@router.get(
+    "/dass_9_result",
+    auth=JWTAuthManager(),
+    response=List[TeamDass9ResultOut]
+)
+def get_all_teams_dass9_results(
+        request,
+        from_date: Optional[date] = Query(None),
+        to_date: Optional[date] = Query(None),
+):
+    """
+    Усреднённые результаты DASS-9 по всем командам руководителя (по дням, с возможностью фильтрации по диапазону)
+    """
+    manager_id = request.auth["user_id"]
+    return Dass9TeamService.get_all_teams_results(manager_id, from_date, to_date)

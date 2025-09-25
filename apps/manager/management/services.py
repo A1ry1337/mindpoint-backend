@@ -1,11 +1,13 @@
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 
+from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from ninja.errors import HttpError
 
+from apps.assessments.dass.models import Dass9Result
 from apps.auth_user.models import User
 from apps.manager.management.models import Team
-
+from datetime import date
 
 class ManagementService:
     @staticmethod
@@ -59,3 +61,87 @@ class ManagementService:
             "username": e.username,
             "fullname": e.full_name,
         } for e in members]
+
+class Dass9TeamService:
+
+    @staticmethod
+    def _filter_by_date(qs, from_date: Optional[date], to_date: Optional[date]):
+        if from_date:
+            qs = qs.filter(date__gte=from_date)
+        if to_date:
+            qs = qs.filter(date__lte=to_date)
+        return qs
+
+    @staticmethod
+    def get_team_results(manager_id: str, team_id: str,
+                         from_date: Optional[date] = None,
+                         to_date: Optional[date] = None) -> Dict[str, Any]:
+        """
+        Средние результаты DASS-9 по команде (группировка по датам, с фильтрацией по диапазону)
+        """
+        team = get_object_or_404(Team, id=team_id, manager_id=manager_id)
+        member_ids = team.members.values_list("id", flat=True)
+
+        qs = Dass9Result.objects.filter(user_id__in=member_ids)
+        qs = Dass9TeamService._filter_by_date(qs, from_date, to_date)
+
+        results = (
+            qs.values("date")
+            .annotate(
+                depression_avg=Avg("depression_score"),
+                stress_avg=Avg("stress_score"),
+                anxiety_avg=Avg("anxiety_score"),
+            )
+            .order_by("date")
+        )
+
+        return {
+            "team": team.name,
+            "results": list(results)
+        }
+
+    @staticmethod
+    def get_all_teams_results(manager_id: str,
+                              from_date: Optional[date] = None,
+                              to_date: Optional[date] = None) -> List[Dict[str, Any]]:
+        """
+        Средние результаты DASS-9 по всем командам + дефолтная команда (по дням, с фильтрацией)
+        """
+        response = []
+        teams = Team.objects.filter(manager_id=manager_id)
+
+        for team in teams:
+            member_ids = team.members.values_list("id", flat=True)
+            qs = Dass9Result.objects.filter(user_id__in=member_ids)
+            qs = Dass9TeamService._filter_by_date(qs, from_date, to_date)
+
+            results = (
+                qs.values("date")
+                .annotate(
+                    depression_avg=Avg("depression_score"),
+                    stress_avg=Avg("stress_score"),
+                    anxiety_avg=Avg("anxiety_score"),
+                )
+                .order_by("date")
+            )
+            response.append({"team": team.name, "results": list(results)})
+
+        # пользователи без команды
+        members_without_team = User.objects.filter(member_teams=None).exclude(id=manager_id)
+        if members_without_team.exists():
+            member_ids = members_without_team.values_list("id", flat=True)
+            qs = Dass9Result.objects.filter(user_id__in=member_ids)
+            qs = Dass9TeamService._filter_by_date(qs, from_date, to_date)
+
+            results = (
+                qs.values("date")
+                .annotate(
+                    depression_avg=Avg("depression_score"),
+                    stress_avg=Avg("stress_score"),
+                    anxiety_avg=Avg("anxiety_score"),
+                )
+                .order_by("date")
+            )
+            response.append({"team": "unknown", "results": list(results)})
+
+        return response
