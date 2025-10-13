@@ -1,14 +1,16 @@
 from ninja import Schema
-from typing import Optional, Literal
-
+from typing import Optional, Literal, List
 
 class ChangeSchema(Schema):
     direction: Literal["up", "down", "neutral"]
     percent: Optional[float]
 
-
-class IpsStatisticsOut(Schema):
-    period: Literal["day", "week", "month", "year"]
-    ips_score: float
-    ips_max_score: float
+class MetricSchema(Schema):
+    type: Literal["ips", "anxiety", "depression", "stress"]
+    score: float
+    max_score: float
     change: ChangeSchema
+
+class MentalStatisticsOut(Schema):
+    period: Literal["day", "week", "month", "year"]
+    statistics: List[MetricSchema]

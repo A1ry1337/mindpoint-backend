@@ -1,11 +1,12 @@
 from datetime import date, timedelta
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from django.db.models import Avg, F
 from django.shortcuts import get_object_or_404
 
 from apps.assessments.dass.models import Dass9Result
 from apps.auth_user.models import User
 from apps.manager.management.models import Team
+
 
 class StatisticsService:
     @staticmethod
@@ -47,13 +48,9 @@ class StatisticsService:
         return {"direction": direction, "percent": round(percent, 2)}
 
     @staticmethod
-    def get_ips_statistics(manager_id: str,
-                           team_id: Optional[str] = None,
-                           period: str = "day") -> Dict[str, any]:
-        """
-        Возвращает средний индекс психоэмоционального состояния (IPS)
-        за указанный период и процент изменения относительно предыдущего.
-        """
+    def get_ips_overview(manager_id: str,
+                              team_id: Optional[str] = None,
+                              period: str = "day") -> Dict[str, any]:
         start, end, prev_start, prev_end = StatisticsService._get_period_dates(period)
 
         if team_id:
@@ -62,31 +59,65 @@ class StatisticsService:
         else:
             member_ids = User.objects.filter(manager_id=manager_id).values_list("id", flat=True)
 
-        # Текущий период
+        # Текущий и предыдущий периоды
         qs = Dass9Result.objects.filter(user_id__in=member_ids, date__range=[start, end])
-        curr_ips = (
-                qs.annotate(total=(F("depression_score") + F("stress_score") + F("anxiety_score")) / 3)
-                .aggregate(avg_ips=Avg("total"))["avg_ips"] or 0
-        )
-
-        if curr_ips != 0:
-            curr_ips = 100 - (curr_ips / 27) * 100
-
-        # Предыдущий период
         prev_qs = Dass9Result.objects.filter(user_id__in=member_ids, date__range=[prev_start, prev_end])
-        prev_ips = (
-                prev_qs.annotate(total=(F("depression_score") + F("stress_score") + F("anxiety_score")) / 3)
-                .aggregate(avg_ips=Avg("total"))["avg_ips"] or 0
+
+        # Средние значения
+        curr_avg = qs.aggregate(
+            avg_anxiety=Avg("anxiety_score"),
+            avg_depression=Avg("depression_score"),
+            avg_stress=Avg("stress_score")
+        )
+        prev_avg = prev_qs.aggregate(
+            avg_anxiety=Avg("anxiety_score"),
+            avg_depression=Avg("depression_score"),
+            avg_stress=Avg("stress_score")
         )
 
-        if prev_ips != 0:
-            prev_ips = 100 - (prev_ips / 27) * 100
+        def safe_value(val): return val or 0.0
 
-        change = StatisticsService._calc_change(prev_ips, curr_ips)
+        curr_anxiety = safe_value(curr_avg["avg_anxiety"])
+        curr_depression = safe_value(curr_avg["avg_depression"])
+        curr_stress = safe_value(curr_avg["avg_stress"])
+        prev_anxiety = safe_value(prev_avg["avg_anxiety"])
+        prev_depression = safe_value(prev_avg["avg_depression"])
+        prev_stress = safe_value(prev_avg["avg_stress"])
+
+        curr_ips_raw = (curr_anxiety + curr_depression + curr_stress) / 3 if any([curr_anxiety, curr_depression, curr_stress]) else 0
+        prev_ips_raw = (prev_anxiety + prev_depression + prev_stress) / 3 if any([prev_anxiety, prev_depression, prev_stress]) else 0
+
+        curr_ips = 100 - (curr_ips_raw / 27) * 100 if curr_ips_raw != 0 else 0
+        prev_ips = 100 - (prev_ips_raw / 27) * 100 if prev_ips_raw != 0 else 0
+
+        stats = [
+            {
+                "type": "ips",
+                "score": round(curr_ips, 2),
+                "max_score": 100.0,
+                "change": StatisticsService._calc_change(prev_ips, curr_ips)
+            },
+            {
+                "type": "anxiety",
+                "score": round(curr_anxiety, 2),
+                "max_score": 9.0,
+                "change": StatisticsService._calc_change(prev_anxiety, curr_anxiety)
+            },
+            {
+                "type": "depression",
+                "score": round(curr_depression, 2),
+                "max_score": 9.0,
+                "change": StatisticsService._calc_change(prev_depression, curr_depression)
+            },
+            {
+                "type": "stress",
+                "score": round(curr_stress, 2),
+                "max_score": 9.0,
+                "change": StatisticsService._calc_change(prev_stress, curr_stress)
+            },
+        ]
 
         return {
             "period": period,
-            "ips_score": round(curr_ips, 2),
-            "ips_max_score": 100,
-            "change": change,
+            "statistics": stats
         }
