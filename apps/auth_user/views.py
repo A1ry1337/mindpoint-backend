@@ -20,7 +20,6 @@ def register(request, data: UserCreateSchema):
 
     - Проверяет уникальность username и email (если указан).
     - Создаёт пользователя с указанными данными.
-    - Если указан managerId, пользователь будет привязан к этому руководителю.
     """
     user = User.objects.filter(
         Q(username=data.username) |
@@ -29,7 +28,6 @@ def register(request, data: UserCreateSchema):
     if user:
         raise HttpError(400, "Пользователь с таким никнеймом или почтой уже существует")
     User.objects.create_user(
-        manager= User.objects.filter(id=data.managerId).first(),
         email=data.email or "",
         username=data.username,
         password=data.password,

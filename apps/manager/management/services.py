@@ -3,10 +3,12 @@ from typing import Dict, Any, List, Optional
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from ninja.errors import HttpError
+from django.utils import timezone
 
 from apps.assessments.dass.models import Dass9Result
 from apps.auth_user.models import User
-from apps.manager.management.models import Team
+from apps.employee.settings.models import ManagerAssignmentRequest
+from apps.manager.management.models import Team, TeamLead
 from datetime import date
 
 class ManagementService:
@@ -14,6 +16,7 @@ class ManagementService:
     def get_all_employees_by_manager(manager_id):
         employees = User.objects.filter(manager_id=manager_id).prefetch_related("member_teams")
         return [{
+            "is_teamlead": e.is_teamlead,
             "id": e.id,
             "username": e.username,
             "fullname": e.full_name,
@@ -59,8 +62,144 @@ class ManagementService:
         return [{
             "id": e.id,
             "username": e.username,
+            "team": None,
+            "is_teamlead": e.is_teamlead,
             "fullname": e.full_name,
         } for e in members]
+
+    @staticmethod
+    def assign_team_lead(manager_id: str, user_id: str):
+        """
+        Назначает роль тимлида для пользователя.
+        """
+        user = get_object_or_404(User, id=user_id, manager_id=manager_id)
+
+        if user.id == manager_id:
+            raise HttpError(400, "Нельзя назначить роль тимлида самому себе")
+
+        user.is_teamlead = True
+        user.save()
+
+        return {"status": "ok", "user_id": user.id, "is_teamlead": user.is_teamlead}
+
+    @staticmethod
+    def revoke_team_lead(manager_id: str, user_id: str):
+        """
+        Снимает роль тимлида у пользователя.
+        """
+        user = get_object_or_404(User, id=user_id, manager_id=manager_id)
+
+        if not user.is_teamlead:
+            raise HttpError(400, "Пользователь не является тимлидом")
+
+        user.is_teamlead = False
+        user.save()
+
+        return {"status": "ok", "user_id": user.id, "is_teamlead": user.is_teamlead}
+
+    @staticmethod
+    def get_teams_with_members(manager_id: str):
+        teams = Team.objects.filter(manager_id=manager_id).prefetch_related("members")
+        result = []
+        for team in teams:
+            members = [
+                {
+                    "id": member.id,
+                    "username": member.username,
+                    "fullname": member.full_name,
+                    "is_teamlead": member.is_teamlead
+                }
+                for member in team.members.all()
+            ]
+
+            team_leads = [
+                {
+                    "id": l.id,
+                    "username": l.username,
+                    "fullname": l.full_name,
+                    "is_teamlead": True
+                }
+                for l in team.team_leads.all()
+            ]
+
+            result.append({
+                "team": {"id": team.id, "name": team.name},
+                "members": members,
+                "team_leads": team_leads
+            })
+        return result
+
+    # назначение тимлида для команды (только для пользователей с is_teamlead=True)
+    @staticmethod
+    def assign_team_lead_to_team(manager_id: str, team_id: str, user_id: str):
+        team = get_object_or_404(Team, id=team_id, manager_id=manager_id)
+        user = get_object_or_404(User, id=user_id)
+
+        if not user.is_teamlead:
+            raise HttpError(400, "Пользователь не является тимлидом и не может быть назначен на команду")
+
+        TeamLead.objects.get_or_create(team=team, user=user)
+        return {"status": "ok", "team_id": str(team.id), "user_id": str(user.id)}
+
+    # отзыв тимлида с команды
+    @staticmethod
+    def revoke_team_lead_from_team(manager_id: str, team_id: str, user_id: str):
+        team = get_object_or_404(Team, id=team_id, manager_id=manager_id)
+        user = get_object_or_404(User, id=user_id)
+
+        deleted, _ = TeamLead.objects.filter(team=team, user=user).delete()
+        if not deleted:
+            raise HttpError(400, "Пользователь не является тимлидом этой команды")
+
+        return {"status": "ok", "team_id": str(team.id), "user_id": str(user.id)}
+
+    @staticmethod
+    def list_manager_requests(manager_id: str):
+        """
+        Возвращает все pending-запросы пользователей, которые хотят быть закреплены за менеджером.
+        """
+        requests = ManagerAssignmentRequest.objects.filter(
+            manager_id=manager_id,
+            is_approved__isnull=True
+        ).select_related("user")
+
+        return [{
+            "request_id": r.id,
+            "user_id": r.user.id,
+            "username": r.user.username,
+            "full_name": r.user.full_name,
+            "created_at": r.created_at.isoformat()
+        } for r in requests]
+
+    @staticmethod
+    def respond_to_manager_request(manager_id: str, request_id: str, approve: bool):
+        """
+        Принять или отклонить запрос пользователя.
+        """
+        request_obj = get_object_or_404(
+            ManagerAssignmentRequest,
+            id=request_id,
+            manager_id=manager_id,
+            is_approved__isnull=True
+        )
+
+        request_obj.is_approved = approve
+        request_obj.responded_at = timezone.now()
+        request_obj.save()
+
+        if approve:
+            user = request_obj.user
+            user.manager_id = manager_id
+            user.save()
+
+        return {
+            "request_id": request_obj.id,
+            "user_id": request_obj.user.id,
+            "username": request_obj.user.username,
+            "status": "approved" if approve else "rejected",
+            "responded_at": request_obj.responded_at.isoformat()
+        }
+
 
 class Dass9TeamService:
 

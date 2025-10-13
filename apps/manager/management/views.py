@@ -1,5 +1,5 @@
 from datetime import date
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from django.shortcuts import get_object_or_404
 from ninja import Router, Query
@@ -7,7 +7,8 @@ from ninja import Router, Query
 from apps.auth_user.models import User
 from apps.auth_user.permissions import JWTAuthManager
 from apps.manager.management.models import Team
-from apps.manager.management.schemas import EmployeeOut, TeamIn, AddMembersIn, TeamDass9ResultOut
+from apps.manager.management.schemas import EmployeeOut, TeamIn, AddMembersIn, TeamDass9ResultOut, TeamLeadIn, \
+    TeamWithMembersOut, AssignTeamLeadIn, ManagerRequestResponseIn
 from apps.manager.management.services import ManagementService, Dass9TeamService
 
 router = Router(tags=["Management(Управление персоналом)"])
@@ -54,6 +55,14 @@ def add_members_to_team(request, data: AddMembersIn):
     manager_id = request.auth["user_id"]
     return ManagementService.add_members_in_team(manager_id, data.team_id, data.user_ids)
 
+@router.get("/get_team_members", auth=JWTAuthManager(), response=List[TeamWithMembersOut])
+def get_teams_with_members(request):
+    """
+    Список команд
+    """
+    manager_id = request.auth["user_id"]
+    return ManagementService.get_teams_with_members(manager_id)
+
 @router.get("/get_team_members/{team_id}", auth=JWTAuthManager(), response=List[EmployeeOut])
 def get_team_members(request, team_id: str):
     """
@@ -96,3 +105,51 @@ def get_all_teams_dass9_results(
     """
     manager_id = request.auth["user_id"]
     return Dass9TeamService.get_all_teams_results(manager_id, from_date, to_date)
+
+@router.post("/assign_team_lead", auth=JWTAuthManager())
+def assign_team_lead(request, data: TeamLeadIn):
+    """
+    Назначение роли тимлида для пользователя менеджером.
+    """
+    manager_id = request.auth["user_id"]
+    return ManagementService.assign_team_lead(manager_id, data.user_id)
+
+@router.post("/revoke_team_lead", auth=JWTAuthManager())
+def revoke_team_lead(request, data: TeamLeadIn):
+    """
+    Снятие роли тимлида у пользователя менеджером.
+    """
+    manager_id = request.auth["user_id"]
+    return ManagementService.revoke_team_lead(manager_id, data.user_id)
+
+@router.post("/assign_team_lead_to_team", auth=JWTAuthManager())
+def assign_team_lead_to_team(request, data: AssignTeamLeadIn):
+    """
+    Назначение команды тимлиду
+    """
+    manager_id = request.auth["user_id"]
+    return ManagementService.assign_team_lead_to_team(manager_id, data.team_id, data.user_id)
+
+@router.post("/revoke_team_lead_from_team", auth=JWTAuthManager())
+def revoke_team_lead_from_team(request, data: AssignTeamLeadIn):
+    """
+    Снятие команды с тимлида
+    """
+    manager_id = request.auth["user_id"]
+    return ManagementService.revoke_team_lead_from_team(manager_id, data.team_id, data.user_id)
+
+@router.get("/manager_requests", auth=JWTAuthManager(), response=List[Dict])
+def manager_requests(request):
+    """
+    Список всех pending-запросов пользователей для менеджера
+    """
+    manager_id = request.auth["user_id"]
+    return ManagementService.list_manager_requests(manager_id)
+
+@router.post("/respond_manager_request", auth=JWTAuthManager())
+def respond_manager_request(request, data: ManagerRequestResponseIn):
+    """
+    Принять или отклонить запрос пользователя на закрепление за менеджером
+    """
+    manager_id = request.auth["user_id"]
+    return ManagementService.respond_to_manager_request(manager_id, data.request_id, data.approve)

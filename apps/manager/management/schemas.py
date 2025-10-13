@@ -13,6 +13,7 @@ class EmployeeOut(BaseModel):
     username: str
     fullname: str
     team: Optional[TeamOut]
+    is_teamlead: Optional[bool]
 
 class TeamIn(Schema):
     name: str
@@ -31,3 +32,25 @@ class Dass9DayAvgOut(Schema):
 class TeamDass9ResultOut(Schema):
     team: str
     results: List[Dass9DayAvgOut]
+
+class TeamLeadIn(Schema):
+    user_id: str
+
+class MemberOut(Schema):
+    id: UUID
+    username: str
+    fullname: str
+    is_teamlead: Optional[bool]
+
+class TeamWithMembersOut(Schema):
+    team: TeamOut
+    members: List[MemberOut]
+    team_leads: List[MemberOut]
+
+class AssignTeamLeadIn(Schema):
+    team_id: str
+    user_id: str
+
+class ManagerRequestResponseIn(Schema):
+    request_id: str
+    approve: bool

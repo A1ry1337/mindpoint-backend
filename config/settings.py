@@ -35,6 +35,7 @@ LOCAL_APPS = [
     'apps.assessments.dass',
     'apps.manager.management',
     'apps.dass_analytics',
+    'apps.employee.settings'
 ]
 
 INSTALLED_APPS = [
