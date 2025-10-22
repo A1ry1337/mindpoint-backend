@@ -20,6 +20,9 @@ def request_manager_by_name(request, data: ManagerAssignmentRequestByNameIn):
 def my_manager_requests(request):
     """
     Список всех запросов пользователя с текущим статусом.
+    pending - ожидает
+    approved - принят
+    rejected - отклонён
     """
     user_id = request.auth["user_id"]
     return ManagerAssignmentService.list_requests(user_id)

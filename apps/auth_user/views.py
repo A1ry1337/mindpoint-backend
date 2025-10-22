@@ -20,6 +20,7 @@ def register(request, data: UserCreateSchema):
 
     - Проверяет уникальность username и email (если указан).
     - Создаёт пользователя с указанными данными.
+    - Если указан is_manager = true то пользователю выдается роль менеджера.
     """
     user = User.objects.filter(
         Q(username=data.username) |
