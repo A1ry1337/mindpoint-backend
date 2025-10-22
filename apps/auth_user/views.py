@@ -31,7 +31,8 @@ def register(request, data: UserCreateSchema):
         email=data.email or "",
         username=data.username,
         password=data.password,
-        full_name=data.full_name or ""
+        full_name=data.full_name or "",
+        is_manager=data.is_manager or False
     )
     return {"message": "Пользователь успешно зарегистрирован"}
 
@@ -50,7 +51,7 @@ def login(request, data: UserCreateSchema):
     - `userId` — UUID пользователя.
     - `username` — никнейм.
     - `fullname` — полное имя.
-    - `isManager` — флаг, является ли пользователь руководителем.
+    - `is_manager` — флаг, является ли пользователь руководителем.
     """
     user = authenticate_user(data.username, data.password)
     if not user:
@@ -64,7 +65,7 @@ def login(request, data: UserCreateSchema):
         "userId": user.id,
         "username": user.__str__(),
         "fullname": user.full_name,
-        "isManager": user.is_manager,
+        "is_manager": user.is_manager,
     })
 
     response.set_cookie(

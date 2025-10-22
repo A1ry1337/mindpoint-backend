@@ -7,10 +7,11 @@ class UserCreateSchema(BaseModel):
     email: Optional[EmailStr] = None
     password: str
     full_name: Optional[str] = None
+    is_manager: Optional[bool] = None
 
 class LoginResponse(Schema):
     access: str
     userId: str
     username: str
     fullname: str
-    isManager: bool
+    is_manager: bool
