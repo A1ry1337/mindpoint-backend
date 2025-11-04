@@ -153,3 +153,37 @@ def respond_manager_request(request, data: ManagerRequestResponseIn):
     """
     manager_id = request.auth["user_id"]
     return ManagementService.respond_to_manager_request(manager_id, data.request_id, data.approve)
+
+from apps.manager.management.schemas import RemoveMemberFromTeamIn, MoveMemberToAnotherTeamIn
+
+@router.post("/remove_member_from_team", auth=JWTAuthManager())
+def remove_member_from_team(request, data: RemoveMemberFromTeamIn):
+    """
+    Удаляет участника из команды.
+    """
+    manager_id = request.auth["user_id"]
+    return ManagementService.remove_member_from_team(manager_id, data.team_id, data.user_id)
+
+
+@router.delete("/remove_member_from_company/{user_id}", auth=JWTAuthManager())
+def remove_member_from_company(request, user_id: str):
+    """
+    Удаляет участника из компании (открепляет от менеджера и всех команд).
+    """
+    manager_id = request.auth["user_id"]
+    return ManagementService.remove_member_from_company(manager_id, user_id)
+
+
+@router.post("/move_member_to_another_team", auth=JWTAuthManager())
+def move_member_to_another_team(request, data: MoveMemberToAnotherTeamIn):
+    """
+    Перемещает участника из одной команды в другую.
+    """
+    manager_id = request.auth["user_id"]
+    return ManagementService.move_member_to_another_team(
+        manager_id,
+        data.user_id,
+        data.from_team_id,
+        data.to_team_id
+    )
+

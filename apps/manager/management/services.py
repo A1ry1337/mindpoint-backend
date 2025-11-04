@@ -200,6 +200,59 @@ class ManagementService:
             "responded_at": request_obj.responded_at.isoformat()
         }
 
+    @staticmethod
+    def remove_member_from_team(manager_id: str, team_id: str, user_id: str) -> Dict[str, Any]:
+        """
+        Удаляет участника из команды.
+        """
+        team = get_object_or_404(Team, id=team_id, manager_id=manager_id)
+        user = get_object_or_404(User, id=user_id)
+
+        if not team.members.filter(id=user.id).exists():
+            raise HttpError(400, "Пользователь не состоит в этой команде")
+
+        team.members.remove(user)
+        return {"status": "removed_from_team", "team_id": str(team.id), "user_id": str(user.id)}
+
+    @staticmethod
+    def remove_member_from_company(manager_id: str, user_id: str) -> Dict[str, Any]:
+        """
+        Удаляет пользователя из компании (открепляет от менеджера и всех команд).
+        """
+        user = get_object_or_404(User, id=user_id, manager_id=manager_id)
+
+        for team in Team.objects.filter(members=user):
+            team.members.remove(user)
+
+        user.manager = None
+        user.is_teamlead = False
+        user.save()
+
+        return {"status": "removed_from_company", "user_id": str(user.id)}
+
+    @staticmethod
+    def move_member_to_another_team(manager_id: str, user_id: str, from_team_id: str, to_team_id: str) -> Dict[
+        str, Any]:
+        """
+        Перемещает участника из одной команды в другую.
+        """
+        from_team = get_object_or_404(Team, id=from_team_id, manager_id=manager_id)
+        to_team = get_object_or_404(Team, id=to_team_id, manager_id=manager_id)
+        user = get_object_or_404(User, id=user_id)
+
+        if not from_team.members.filter(id=user.id).exists():
+            raise HttpError(400, "Пользователь не состоит в исходной команде")
+
+        from_team.members.remove(user)
+        to_team.members.add(user)
+
+        return {
+            "status": "moved",
+            "from_team_id": str(from_team.id),
+            "to_team_id": str(to_team.id),
+            "user_id": str(user.id),
+        }
+
 
 class Dass9TeamService:
 

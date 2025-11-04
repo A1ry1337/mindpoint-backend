@@ -54,3 +54,12 @@ class AssignTeamLeadIn(Schema):
 class ManagerRequestResponseIn(Schema):
     request_id: str
     approve: bool
+
+class RemoveMemberFromTeamIn(Schema):
+    team_id: str
+    user_id: str
+
+class MoveMemberToAnotherTeamIn(Schema):
+    user_id: str
+    from_team_id: str
+    to_team_id: str
