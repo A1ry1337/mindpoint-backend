@@ -5,33 +5,11 @@ from django.shortcuts import get_object_or_404
 
 from apps.assessments.dass.models import Dass9Result
 from apps.auth_user.models import User
+from apps.dass_analytics.utils import DassAnalyticsUtils
 from apps.manager.management.models import Team
 
 
 class StatisticsService:
-    @staticmethod
-    def _get_period_dates(period: str):
-        today = date.today()
-        if period == "day":
-            start = today
-            prev_start = today - timedelta(days=1)
-            prev_end = today - timedelta(days=1)
-        elif period == "week":
-            start = today - timedelta(days=7)
-            prev_start = today - timedelta(days=14)
-            prev_end = today - timedelta(days=7)
-        elif period == "month":
-            start = today.replace(day=1)
-            prev_month_end = start - timedelta(days=1)
-            prev_start = prev_month_end.replace(day=1)
-            prev_end = prev_month_end
-        elif period == "year":
-            start = date(today.year, 1, 1)
-            prev_start = date(today.year - 1, 1, 1)
-            prev_end = date(today.year - 1, 12, 31)
-        else:
-            raise ValueError("Invalid period")
-        return start, today, prev_start, prev_end
 
     @staticmethod
     def _calc_change(old_value: float, new_value: float) -> Dict:
@@ -51,7 +29,7 @@ class StatisticsService:
     def get_ips_overview(manager_id: str,
                               team_id: Optional[str] = None,
                               period: str = "day") -> Dict[str, any]:
-        start, end, prev_start, prev_end = StatisticsService._get_period_dates(period)
+        start, end, prev_start, prev_end = DassAnalyticsUtils.get_current_and_previous_period_dates(period)
 
         if team_id:
             team = get_object_or_404(Team, id=team_id, manager_id=manager_id)
@@ -121,3 +99,40 @@ class StatisticsService:
             "period": period,
             "statistics": stats
         }
+
+    @staticmethod
+    def get_test_count(manager_id: str,
+                       team_id: str,
+                       period: str = "week") -> Dict[str, any]:
+        """
+        Возвращает количество прохождений теста DASS9 за последние 4 периода
+        (дня, недели, месяца или года) для выбранной команды.
+        Если данных нет — добавляется сообщение.
+        """
+        team = get_object_or_404(Team, id=team_id, manager_id=manager_id)
+        member_ids = team.members.values_list("id", flat=True)
+
+        periods: List[Dict] = []
+
+        for offset in range(4):
+            start, end = DassAnalyticsUtils.get_period_dates(period, offset)
+            count = Dass9Result.objects.filter(
+                user_id__in=member_ids,
+                date__range=[start, end]
+            ).count()
+
+            entry = {
+                "start": start.isoformat(),
+                "end": end.isoformat(),
+                "test_count": count,
+            }
+
+            if count == 0:
+                entry["message"] = "Данные ещё не собраны"
+
+            periods.append(entry)
+
+        # Сортируем по возрастанию (от старого к новому)
+        periods.reverse()
+
+        return {"period": period, "periods": periods}

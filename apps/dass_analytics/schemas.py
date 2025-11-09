@@ -14,3 +14,12 @@ class MetricSchema(Schema):
 class MentalStatisticsOut(Schema):
     period: Literal["day", "week", "month", "year"]
     statistics: List[MetricSchema]
+
+class PeriodData(Schema):
+    start: str
+    end: str
+    test_count: int
+
+class TestCountOut(Schema):
+    period: Literal["day", "week", "month", "year"]
+    periods: List[PeriodData]

@@ -2,7 +2,7 @@ from ninja import Router, Query
 from typing import Optional
 from apps.auth_user.permissions import JWTAuthManager
 from apps.dass_analytics.services import StatisticsService
-from apps.dass_analytics.schemas import MentalStatisticsOut
+from apps.dass_analytics.schemas import MentalStatisticsOut, TestCountOut
 
 router = Router(tags=["Аналитика DASS"])
 
@@ -17,3 +17,17 @@ def get_mental_statistics(
     """
     manager_id = request.auth["user_id"]
     return StatisticsService.get_ips_overview(manager_id, period=period)
+
+@router.get("/test_count", response=TestCountOut, auth=JWTAuthManager())
+def get_test_count(
+        request,
+        period: Optional[str] = Query("week", description="day | week | month | year"),
+        team_id: str = Query(..., description="ID команды (обязательно)")
+):
+    """
+    Возвращает количество прохождений теста DASS9 за последние 4 периода
+    (дня, недели, месяца или года) для выбранной команды.
+    Если в периоде нет данных — добавляется сообщение "Данные ещё не собраны".
+    """
+    manager_id = request.auth["user_id"]
+    return StatisticsService.get_test_count(manager_id, team_id=team_id, period=period)
