@@ -2,7 +2,7 @@ from ninja import Router, Query
 from typing import Optional
 from apps.auth_user.permissions import JWTAuthManager
 from apps.dass_analytics.services import StatisticsService
-from apps.dass_analytics.schemas import MentalStatisticsOut, TestCountOut
+from apps.dass_analytics.schemas import MentalStatisticsOut, TestCountOut, TeamsTestComparisonOut, TeamsTestComparisonIn
 
 router = Router(tags=["Аналитика DASS"])
 
@@ -31,3 +31,16 @@ def get_test_count(
     """
     manager_id = request.auth["user_id"]
     return StatisticsService.get_test_count(manager_id, team_id=team_id, period=period)
+
+@router.post("/test_count_common", response=TeamsTestComparisonOut, auth=JWTAuthManager())
+def get_teams_test_comparison(request, payload: TeamsTestComparisonIn):
+    """
+    Возвращает количество прохождений теста DASS9 для всех (или выбранных) команд
+    за указанный период и предыдущий, с динамикой изменения.
+    """
+    manager_id = request.auth["user_id"]
+    return StatisticsService.get_teams_test_comparison(
+        manager_id,
+        period=payload.period,
+        team_ids=payload.team_ids
+    )

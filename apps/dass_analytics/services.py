@@ -136,3 +136,55 @@ class StatisticsService:
         periods.reverse()
 
         return {"period": period, "periods": periods}
+
+    @staticmethod
+    def get_teams_test_comparison(manager_id: str,
+                                  period: str = "week",
+                                  team_ids: Optional[List[str]] = None) -> Dict[str, any]:
+        """
+        Возвращает количество прохождений теста DASS9 по всем (или выбранным) командам
+        за текущий и предыдущий периоды, с процентом изменения.
+        """
+        teams_qs = Team.objects.filter(manager_id=manager_id)
+        if team_ids:
+            teams_qs = teams_qs.filter(id__in=team_ids)
+
+        teams = list(teams_qs)
+        start, end, prev_start, prev_end = DassAnalyticsUtils.get_current_and_previous_period_dates(period)
+
+        results = []
+
+        for team in teams:
+            member_ids = team.members.values_list("id", flat=True)
+
+            curr_count = Dass9Result.objects.filter(
+                user_id__in=member_ids, date__range=[start, end]
+            ).count()
+            prev_count = Dass9Result.objects.filter(
+                user_id__in=member_ids, date__range=[prev_start, prev_end]
+            ).count()
+
+            # Вычисляем направление и процент
+            if prev_count == 0:
+                direction = "up" if curr_count > 0 else "neutral"
+                percent = None
+            else:
+                diff = curr_count - prev_count
+                direction = "up" if diff > 0 else "down" if diff < 0 else "neutral"
+                percent = abs(diff / prev_count * 100)
+
+            results.append({
+                "team_id": str(team.id),
+                "team_name": team.name,
+                "current_count": curr_count,
+                "previous_count": prev_count,
+                "change": {
+                    "direction": direction,
+                    "percent": round(percent, 2) if percent is not None else None
+                }
+            })
+
+        return {
+            "period": period,
+            "teams": results
+        }

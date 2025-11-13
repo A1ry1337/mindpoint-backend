@@ -23,3 +23,22 @@ class PeriodData(Schema):
 class TestCountOut(Schema):
     period: Literal["day", "week", "month", "year"]
     periods: List[PeriodData]
+
+class CountChangeSchema(Schema):
+    direction: Literal["up", "down", "neutral"]
+    percent: Optional[float]
+
+class TeamTestComparisonSchema(Schema):
+    team_id: str
+    team_name: str
+    current_count: int
+    previous_count: int
+    change: CountChangeSchema
+
+class TeamsTestComparisonOut(Schema):
+    period: Literal["day", "week", "month", "year"]
+    teams: List[TeamTestComparisonSchema]
+
+class TeamsTestComparisonIn(Schema):
+    period: Literal["day", "week", "month", "year"] = "week"
+    team_ids: Optional[List[str]] = None

@@ -9,8 +9,10 @@ from django.contrib.auth.hashers import make_password, check_password
 
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 15
-REFRESH_TOKEN_EXPIRE_DAYS = 7
+# ACCESS_TOKEN_EXPIRE_MINUTES = 15
+# REFRESH_TOKEN_EXPIRE_DAYS = 7
+ACCESS_TOKEN_EXPIRE_MINUTES = 150000
+REFRESH_TOKEN_EXPIRE_DAYS =   150000
 
 def create_access_token(user_id: int, is_manager: bool):
     expire = timezone.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
