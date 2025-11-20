@@ -14,4 +14,5 @@ class LoginResponse(Schema):
     userId: str
     username: str
     fullname: str
+    email: str
     is_manager: bool

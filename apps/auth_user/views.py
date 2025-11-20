@@ -66,6 +66,7 @@ def login(request, data: UserCreateSchema):
         "userId": user.id,
         "username": user.__str__(),
         "fullname": user.full_name,
+        "email": user.email,
         "is_manager": user.is_manager,
     })
 
