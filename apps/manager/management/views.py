@@ -7,7 +7,7 @@ from ninja import Router, Query
 from apps.auth_user.models import User
 from apps.auth_user.permissions import JWTAuthManager
 from apps.manager.management.models import Team
-from apps.manager.management.schemas import EmployeeOut, TeamIn, AddMembersIn, TeamDass9ResultOut, TeamLeadIn, \
+from apps.manager.management.schemas import EmployeeOut, TeamIn, AddMembersIn, TeamDass9ResultOut, \
     TeamWithMembersOut, AssignTeamLeadIn, ManagerRequestResponseIn
 from apps.manager.management.services import ManagementService, Dass9TeamService
 
@@ -105,22 +105,6 @@ def get_all_teams_dass9_results(
     """
     manager_id = request.auth["user_id"]
     return Dass9TeamService.get_all_teams_results(manager_id, from_date, to_date)
-
-@router.post("/assign_team_lead", auth=JWTAuthManager())
-def assign_team_lead(request, data: TeamLeadIn):
-    """
-    Назначение роли тимлида для пользователя менеджером.
-    """
-    manager_id = request.auth["user_id"]
-    return ManagementService.assign_team_lead(manager_id, data.user_id)
-
-@router.post("/revoke_team_lead", auth=JWTAuthManager())
-def revoke_team_lead(request, data: TeamLeadIn):
-    """
-    Снятие роли тимлида у пользователя менеджером.
-    """
-    manager_id = request.auth["user_id"]
-    return ManagementService.revoke_team_lead(manager_id, data.user_id)
 
 @router.post("/assign_team_lead_to_team", auth=JWTAuthManager())
 def assign_team_lead_to_team(request, data: AssignTeamLeadIn):

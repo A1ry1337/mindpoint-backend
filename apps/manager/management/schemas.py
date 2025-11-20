@@ -8,12 +8,16 @@ class TeamOut(BaseModel):
     id: UUID
     name: str
 
+class EmployeeTeamOut(BaseModel):
+    id: UUID
+    name: str
+    is_teamlead: bool
+
 class EmployeeOut(BaseModel):
     id: UUID
     username: str
     fullname: str
-    team: Optional[TeamOut]
-    is_teamlead: Optional[bool]
+    teams: List[EmployeeTeamOut]
 
 class TeamIn(Schema):
     name: str
@@ -32,9 +36,6 @@ class Dass9DayAvgOut(Schema):
 class TeamDass9ResultOut(Schema):
     team: str
     results: List[Dass9DayAvgOut]
-
-class TeamLeadIn(Schema):
-    user_id: str
 
 class MemberOut(Schema):
     id: UUID
