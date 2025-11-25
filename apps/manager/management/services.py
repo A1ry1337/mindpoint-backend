@@ -71,32 +71,25 @@ class ManagementService:
         }
 
     @staticmethod
-    def get_team_members(manager_id: str, team_id: str):
-        team = get_object_or_404(Team, id=team_id, manager_id=manager_id)
+    def get_teams_with_members(manager_id: str, team_id: str | None = None):
 
-        members = team.members.all()
-        return [{
-            "id": e.id,
-            "username": e.username,
-            "team": None,
-            "is_teamlead": e.is_teamlead,
-            "fullname": e.full_name,
-        } for e in members]
+        teams = Team.objects.filter(manager_id=manager_id)
 
-    @staticmethod
-    def get_teams_with_members(manager_id: str):
-        teams = Team.objects.filter(manager_id=manager_id).prefetch_related("members", "team_leads")
+        if team_id is not None:
+            teams = teams.filter(id=team_id)
+
+        teams = teams.prefetch_related("members", "team_leads")
+
         result = []
         for team in teams:
-
-            team_lead_ids = set(team.team_leads.all().values_list('id', flat=True))
+            team_lead_ids = set(team.team_leads.all().values_list("id", flat=True))
 
             members = [
                 {
                     "id": member.id,
                     "username": member.username,
                     "fullname": member.full_name,
-                    "is_teamlead": member.id in team_lead_ids
+                    "is_teamlead": member.id in team_lead_ids,
                 }
                 for member in team.members.all()
             ]
@@ -106,16 +99,19 @@ class ManagementService:
                     "id": team_lead.id,
                     "username": team_lead.username,
                     "fullname": team_lead.full_name,
-                    "is_teamlead": True
+                    "is_teamlead": True,
                 }
                 for team_lead in team.team_leads.all()
             ]
 
-            result.append({
-                "team": {"id": team.id, "name": team.name},
-                "members": members,
-                "team_leads": team_leads
-            })
+            result.append(
+                {
+                    "team": {"id": team.id, "name": team.name},
+                    "members": members,
+                    "team_leads": team_leads,
+                }
+            )
+
         return result
 
     # назначение тимлида для команды (только для пользователей с is_teamlead=True)

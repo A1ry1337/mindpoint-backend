@@ -63,14 +63,14 @@ def get_teams_with_members(request):
     manager_id = request.auth["user_id"]
     return ManagementService.get_teams_with_members(manager_id)
 
-@router.get("/get_team_members/{team_id}", auth=JWTAuthManager(), response=List[EmployeeOut])
+@router.get("/get_team_members/{team_id}", auth=JWTAuthManager(), response=List[TeamWithMembersOut])
 def get_team_members(request, team_id: str):
     """
     Возвращает всех участников команды по ID.
     Доступно только руководителю этой команды.
     """
     manager_id = request.auth["user_id"]
-    return ManagementService.get_team_members(manager_id, team_id)
+    return ManagementService.get_teams_with_members(manager_id, team_id)
 
 @router.get(
     "/dass_9_result/{team_id}",
