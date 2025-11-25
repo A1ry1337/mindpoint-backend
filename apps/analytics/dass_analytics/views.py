@@ -1,8 +1,8 @@
 from ninja import Router, Query
 from typing import Optional
 from apps.auth_user.permissions import JWTAuthManager
-from apps.dass_analytics.services import StatisticsService
-from apps.dass_analytics.schemas import MentalStatisticsOut, TestCountOut, TeamsTestComparisonOut, TeamsTestComparisonIn
+from apps.analytics.dass_analytics.services import StatisticsService
+from apps.analytics.dass_analytics.schemas import MentalStatisticsOut, TestCountOut, TeamsTestComparisonOut, TeamsTestComparisonIn
 
 router = Router(tags=["Аналитика DASS"])
 

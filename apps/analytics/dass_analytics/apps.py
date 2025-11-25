@@ -1,4 +1,4 @@
 from django.apps import AppConfig
 
 class DassAnalyticsConfig(AppConfig):
-    name = 'apps.dass_analytics'
+    name = 'apps.analytics.dass_analytics'
