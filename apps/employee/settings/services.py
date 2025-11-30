@@ -1,6 +1,7 @@
 from django.shortcuts import get_object_or_404
 from ninja.errors import HttpError
 from .models import ManagerAssignmentRequest
+from django.utils import timezone
 from apps.auth_user.models import User
 
 class ManagerAssignmentService:
@@ -35,6 +36,7 @@ class ManagerAssignmentService:
         if not created:
             request.is_approved = None
             request.responded_at = None
+            request.created_at = timezone.now()
             request.save()
 
         status = (
