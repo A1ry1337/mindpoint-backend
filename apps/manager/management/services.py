@@ -242,6 +242,8 @@ class ManagementService:
         if not from_team.members.filter(id=user.id).exists():
             raise HttpError(400, "Пользователь не состоит в исходной команде")
 
+        TeamLead.objects.filter(team=from_team, user=user).delete()
+
         from_team.members.remove(user)
         to_team.members.add(user)
 
