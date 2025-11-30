@@ -17,29 +17,37 @@ class ManagerAssignmentService:
         if user.manager_id == manager.id:
             raise HttpError(400, "Менеджер уже закреплён за пользователем")
 
-        # Проверяем, есть ли уже pending-запрос к этому менеджеру
         existing_request = ManagerAssignmentRequest.objects.filter(
             user=user,
             manager=manager,
-            is_approved__isnull=True  # pending
+            is_approved__isnull=True
         ).first()
 
         if existing_request:
             raise HttpError(400, "Уже существует pending-запрос к этому менеджеру")
 
-        request = ManagerAssignmentRequest.objects.create(
+        request, created = ManagerAssignmentRequest.objects.get_or_create(
             user=user,
             manager=manager,
-            is_approved=None
+            defaults={"is_approved": None},
         )
 
-        status = "pending" if request.is_approved is None else ("approved" if request.is_approved else "rejected")
+        if not created:
+            request.is_approved = None
+            request.responded_at = None
+            request.save()
+
+        status = (
+            "pending"
+            if request.is_approved is None
+            else ("approved" if request.is_approved else "rejected")
+        )
 
         return {
-            "request_id": request.id,
+            "request_id": str(request.id),
             "manager_username": request.manager.username,
             "status": status,
-            "created_at": request.created_at.isoformat()
+            "created_at": request.created_at.isoformat(),
         }
 
     @staticmethod
