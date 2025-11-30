@@ -210,6 +210,7 @@ class ManagementService:
             raise HttpError(400, "Пользователь не состоит в этой команде")
 
         team.members.remove(user)
+        TeamLead.objects.filter(team=team, user=user).delete()
         return {"status": "removed_from_team", "team_id": str(team.id), "user_id": str(user.id)}
 
     @staticmethod
