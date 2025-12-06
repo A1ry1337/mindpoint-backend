@@ -2,7 +2,8 @@ from ninja import Router, Query
 from typing import Optional
 from apps.auth_user.permissions import JWTAuthManager
 from apps.analytics.dass_analytics.services import StatisticsService
-from apps.analytics.dass_analytics.schemas import MentalStatisticsOut, TestCountOut, TeamsTestComparisonOut, TeamsTestComparisonIn
+from apps.analytics.dass_analytics.schemas import MentalStatisticsOut, TestCountOut, TeamsTestComparisonOut, \
+    TeamsTestComparisonIn, RiskTeamsOut, RiskTeamsIn
 
 router = Router(tags=["Аналитика DASS"])
 
@@ -43,4 +44,19 @@ def get_teams_test_comparison(request, payload: TeamsTestComparisonIn):
         manager_id,
         period=payload.period,
         team_ids=payload.team_ids
+    )
+
+@router.post("/risk_categories", response=RiskTeamsOut, auth=JWTAuthManager())
+def get_risk_categories(request, payload: RiskTeamsIn):
+    """
+    Возвращает процент сотрудников в зоне риска по категориям
+    (депрессия, тревога, стресс) по выбранным или всем командам
+    с учётом периода: day, week, month, year.
+    """
+    manager_id = request.auth["user_id"]
+
+    return StatisticsService.get_risk_percent_by_categories(
+        manager_id=manager_id,
+        team_ids=payload.team_ids,
+        period=payload.period
     )

@@ -1,5 +1,6 @@
 from ninja import Schema
 from typing import Optional, Literal, List
+from enum import Enum
 
 class ChangeSchema(Schema):
     direction: Literal["up", "down", "neutral"]
@@ -42,3 +43,23 @@ class TeamsTestComparisonOut(Schema):
 class TeamsTestComparisonIn(Schema):
     period: Literal["day", "week", "month", "year"] = "week"
     team_ids: Optional[List[str]] = None
+
+class RiskCategorySchema(Schema):
+    risk_members: int
+    risk_percent: Optional[float]
+
+class RiskTeamSchema(Schema):
+    team_id: str
+    team_name: str
+    total_members: int
+
+    depression: RiskCategorySchema
+    anxiety: RiskCategorySchema
+    stress: RiskCategorySchema
+
+class RiskTeamsOut(Schema):
+    teams: List[RiskTeamSchema]
+
+class RiskTeamsIn(Schema):
+    team_ids: Optional[List[str]] = None
+    period: Literal["day", "week", "month", "year"] = "day"

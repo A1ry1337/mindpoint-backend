@@ -1,6 +1,7 @@
 from typing import Dict, Optional, List
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
+from datetime import date, timedelta
 
 from apps.assessments.dass.models import Dass9Result
 from apps.auth_user.models import User
@@ -187,3 +188,76 @@ class StatisticsService:
             "period": period,
             "teams": results
         }
+
+    @staticmethod
+    def get_risk_percent_by_categories(
+            manager_id: str,
+            team_ids: Optional[List[str]] = None,
+            period: str = "day"
+    ) -> Dict[str, any]:
+        """
+        Возвращает процент сотрудников в зоне риска по категориям
+        для всех или выбранных команд за указанный период.
+        """
+        # Определяем дату начала периода
+        today = date.today()
+        days_map = {"day": 1, "week": 7, "month": 31, "year": 365}
+        days = days_map.get(period, 1)
+        start_date = today - timedelta(days=days - 1)
+        end_date = today
+
+        teams_qs = Team.objects.filter(manager_id=manager_id)
+        if team_ids:
+            teams_qs = teams_qs.filter(id__in=team_ids)
+
+        results = []
+
+        for team in teams_qs:
+            member_ids = list(team.members.values_list("id", flat=True))
+            total_members = len(member_ids)
+
+            if total_members == 0:
+                results.append({
+                    "team_id": str(team.id),
+                    "team_name": team.name,
+                    "total_members": 0,
+                    "depression": {"risk_members": 0, "risk_percent": None},
+                    "anxiety": {"risk_members": 0, "risk_percent": None},
+                    "stress": {"risk_members": 0, "risk_percent": None},
+                })
+                continue
+
+            # ---- ДЕПРЕССИЯ >= 5 ----
+            dep_members = Dass9Result.objects.filter(
+                user_id__in=member_ids,
+                depression_score__gte=5,
+                date__range=[start_date, end_date]
+            ).values_list("user_id", flat=True).distinct().count()
+            dep_percent = round(dep_members / total_members * 100, 2) if total_members else None
+
+            # ---- ТРЕВОГА >= 4 ----
+            anx_members = Dass9Result.objects.filter(
+                user_id__in=member_ids,
+                anxiety_score__gte=4,
+                date__range=[start_date, end_date]
+            ).values_list("user_id", flat=True).distinct().count()
+            anx_percent = round(anx_members / total_members * 100, 2) if total_members else None
+
+            # ---- СТРЕСС >= 5 ----
+            str_members = Dass9Result.objects.filter(
+                user_id__in=member_ids,
+                stress_score__gte=5,
+                date__range=[start_date, end_date]
+            ).values_list("user_id", flat=True).distinct().count()
+            str_percent = round(str_members / total_members * 100, 2) if total_members else None
+
+            results.append({
+                "team_id": str(team.id),
+                "team_name": team.name,
+                "total_members": total_members,
+                "depression": {"risk_members": dep_members, "risk_percent": dep_percent},
+                "anxiety": {"risk_members": anx_members, "risk_percent": anx_percent},
+                "stress": {"risk_members": str_members, "risk_percent": str_percent},
+            })
+
+        return {"teams": results}
