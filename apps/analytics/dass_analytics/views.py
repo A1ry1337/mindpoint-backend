@@ -3,7 +3,7 @@ from typing import Optional
 from apps.auth_user.permissions import JWTAuthManager
 from apps.analytics.dass_analytics.services import StatisticsService
 from apps.analytics.dass_analytics.schemas import MentalStatisticsOut, TestCountOut, TeamsTestComparisonOut, \
-    TeamsTestComparisonIn, RiskTeamsOut, RiskTeamsIn
+    TeamsTestComparisonIn, RiskTeamsOut, RiskTeamsIn, SeverityTeamsIn, SeverityTeamsOut
 
 router = Router(tags=["Аналитика DASS"])
 
@@ -56,6 +56,28 @@ def get_risk_categories(request, payload: RiskTeamsIn):
     manager_id = request.auth["user_id"]
 
     return StatisticsService.get_risk_percent_by_categories(
+        manager_id=manager_id,
+        team_ids=payload.team_ids,
+        period=payload.period
+    )
+
+
+@router.post("/severity_distribution", response= SeverityTeamsOut, auth=JWTAuthManager())
+def get_severity_distribution(request, payload: SeverityTeamsIn):
+    """
+    Возвращает распределение сотрудников по уровням тяжести
+    (Normal, Mild, Moderate, High, Very High) для депрессии, тревоги и стресса
+    для выбранных команд или всех команд менеджера.
+
+    Параметры:
+    - team_ids: список ID команд (если не указан, берутся все команды менеджера)
+    - period: период для расчета статистики ('day', 'week', 'month', 'year')
+
+    Ответ содержит количество участников и процент для каждого уровня тяжести
+    по каждой метрике (depression, anxiety, stress) для каждой команды.
+    """
+    manager_id = request.auth["user_id"]
+    return StatisticsService.get_severity_distribution_by_team(
         manager_id=manager_id,
         team_ids=payload.team_ids,
         period=payload.period

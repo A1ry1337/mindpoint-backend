@@ -261,3 +261,149 @@ class StatisticsService:
             })
 
         return {"teams": results}
+
+    @staticmethod
+    def get_severity_distribution_by_team(
+            manager_id: str,
+            team_ids: Optional[List[str]] = None,
+            period: str = "day"
+    ) -> Dict[str, any]:
+        """
+        Возвращает распределение сотрудников по уровню выраженности
+        (нормальный, лёгкий, средний, высокий, очень высокий)
+        депрессии, тревожности и стресса для выбранных команд
+        """
+        from django.db.models import Avg
+
+        # Определяем период
+        today = date.today()
+        period_days = {"day": 1, "week": 7, "month": 31, "year": 365}
+        days = period_days.get(period, 1)
+        start_date = today - timedelta(days=days - 1)
+
+        # Получаем команды менеджера
+        teams = Team.objects.filter(manager_id=manager_id)
+        if team_ids:
+            teams = teams.filter(id__in=team_ids)
+
+        # Уровни тяжести
+        SEVERITY_LEVELS = {
+            "depression": [
+                ("Normal", 0, 2),
+                ("Mild", 3, 3),
+                ("Moderate", 4, 4),
+                ("High", 5, 6),
+                ("Very_High", 7, 9),
+            ],
+            "anxiety": [
+                ("Normal", 0, 1),
+                ("Mild", 2, 2),
+                ("Moderate", 3, 3),
+                ("High", 4, 5),
+                ("Very_High", 6, 9),
+            ],
+            "stress": [
+                ("Normal", 0, 2),
+                ("Mild", 3, 3),
+                ("Moderate", 4, 4),
+                ("High", 5, 6),
+                ("Very_High", 7, 9),
+            ]
+        }
+
+        results = []
+
+        for team in teams:
+            # Получаем участников команды
+            members = list(team.members.all())
+            member_ids = [member.id for member in members]
+            total_members = len(members)
+
+            # Базовая структура для команды
+            team_data = {
+                "team_id": str(team.id),
+                "team_name": team.name,
+                "total_members": total_members,
+                "depression": {},
+                "anxiety": {},
+                "stress": {},
+            }
+
+            if total_members == 0:
+                # Если нет участников, заполняем нулями
+                for metric in SEVERITY_LEVELS:
+                    for level_name, _, _ in SEVERITY_LEVELS[metric]:
+                        team_data[metric][level_name] = {
+                            "members": 0,
+                            "percent": 0.0
+                        }
+                results.append(team_data)
+                continue
+
+            # Получаем средние баллы ВСЕХ участников за период
+            # Используем один запрос для всех показателей
+            user_scores_query = Dass9Result.objects.filter(
+                user_id__in=member_ids,
+                date__gte=start_date,
+                date__lte=today
+            ).values('user_id').annotate(
+                avg_depression=Avg('depression_score'),
+                avg_anxiety=Avg('anxiety_score'),
+                avg_stress=Avg('stress_score')
+            )
+
+            # Создаем словарь для хранения средних баллов
+            # Инициализируем всех участников как None (нет данных)
+            member_scores = {
+                user_id: {
+                    "depression": None,
+                    "anxiety": None,
+                    "stress": None
+                }
+                for user_id in member_ids
+            }
+
+            # Заполняем данные для тех, у кого есть результаты
+            for row in user_scores_query:
+                user_id = row['user_id']
+                member_scores[user_id] = {
+                    "depression": row['avg_depression'],
+                    "anxiety": row['avg_anxiety'],
+                    "stress": row['avg_stress']
+                }
+
+            # Для каждого показателя считаем распределение
+            for metric in ["depression", "anxiety", "stress"]:
+                # Инициализируем счетчики для всех уровней
+                level_counts = {level[0]: 0 for level in SEVERITY_LEVELS[metric]}
+
+                # Считаем участников по уровням
+                for user_id in member_ids:
+                    score = member_scores[user_id][metric]
+
+                    # Пропускаем если нет данных
+                    if score is None:
+                        continue
+
+                    # Округляем средний балл до целого
+                    rounded_score = round(score)
+
+                    # Определяем уровень
+                    for level_name, min_score, max_score in SEVERITY_LEVELS[metric]:
+                        if min_score <= rounded_score <= max_score:
+                            level_counts[level_name] += 1
+                            break
+
+                # Заполняем результат для показателя
+                for level_name, _, _ in SEVERITY_LEVELS[metric]:
+                    count = level_counts[level_name]
+                    percent = round((count / total_members) * 100, 2) if total_members > 0 else 0.0
+
+                    team_data[metric][level_name] = {
+                        "members": count,
+                        "percent": percent
+                    }
+
+            results.append(team_data)
+
+        return {"teams": results}

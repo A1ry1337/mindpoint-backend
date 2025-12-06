@@ -63,3 +63,29 @@ class RiskTeamsOut(Schema):
 class RiskTeamsIn(Schema):
     team_ids: Optional[List[str]] = None
     period: Literal["day", "week", "month", "year"] = "day"
+
+class SeverityLevelSchema(Schema):
+    members: int
+    percent: Optional[float]
+
+class SeverityMetricSchema(Schema):
+    Normal: SeverityLevelSchema
+    Mild: SeverityLevelSchema
+    Moderate: SeverityLevelSchema
+    High: SeverityLevelSchema
+    Very_High: SeverityLevelSchema
+
+class TeamSeveritySchema(Schema):
+    team_id: str
+    team_name: str
+    total_members: int
+    depression: SeverityMetricSchema
+    anxiety: SeverityMetricSchema
+    stress: SeverityMetricSchema
+
+class SeverityTeamsOut(Schema):
+    teams: List[TeamSeveritySchema]
+
+class SeverityTeamsIn(Schema):
+    team_ids: Optional[List[str]] = None
+    period: Literal["day", "week", "month", "year"] = "day"
