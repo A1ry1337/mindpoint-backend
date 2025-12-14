@@ -123,6 +123,11 @@ class ManagementService:
         if user.id == manager_id:
             raise HttpError(400, "Нельзя назначить роль тимлида самому себе")
 
+        # Проверяем, является ли пользователь членом команды
+        if not team.members.filter(id=user.id).exists():
+            # Если не состоит в команде - добавляем
+            team.members.add(user)
+
         # Если пользователь еще не тимлид - делаем его тимлидом
         if not user.is_teamlead:
             user.is_teamlead = True
