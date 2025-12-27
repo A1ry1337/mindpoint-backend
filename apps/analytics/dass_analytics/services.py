@@ -407,3 +407,48 @@ class StatisticsService:
             results.append(team_data)
 
         return {"teams": results}
+
+    @staticmethod
+    def get_periodic_test_counts(manager_id: str, team_ids: Optional[List[str]] = None) -> Dict[str, any]:
+        """
+        Возвращает ОБЩЕЕ количество прохождений теста DASS9 за периоды:
+        - week (последние 7 дней),
+        - month (последние 31 день),
+        - year (последние 365 дней)
+
+        Для всех команд менеджера или только для указанных team_ids.
+        """
+        teams_qs = Team.objects.filter(manager_id=manager_id)
+        if team_ids:
+            teams_qs = teams_qs.filter(id__in=team_ids)
+
+        # Собираем ВСЕ ID участников по всем командам
+        all_member_ids = set()
+        for team in teams_qs:
+            all_member_ids.update(team.members.values_list("id", flat=True))
+
+        if not all_member_ids:
+            return {
+                "counts": {
+                    "week": 0,
+                    "month": 0,
+                    "year": 0
+                }
+            }
+
+        today = date.today()
+        periods = {
+            "week": (today - timedelta(days=6), today),
+            "month": (today - timedelta(days=30), today),
+            "year": (today - timedelta(days=364), today),
+        }
+
+        counts = {}
+        for period_name, (start, end) in periods.items():
+            cnt = Dass9Result.objects.filter(
+                user_id__in=all_member_ids,
+                date__range=[start, end]
+            ).count()
+            counts[period_name] = cnt
+
+        return {"counts": counts}

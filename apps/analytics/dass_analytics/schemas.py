@@ -89,3 +89,14 @@ class SeverityTeamsOut(Schema):
 class SeverityTeamsIn(Schema):
     team_ids: Optional[List[str]] = None
     period: Literal["day", "week", "month", "year"] = "day"
+
+class PeriodicTestCount(Schema):
+    week: int
+    month: int
+    year: int
+
+class TeamsPeriodicTestCountOut(Schema):
+    counts: PeriodicTestCount
+
+class TeamsPeriodicTestCountIn(Schema):
+    team_ids: Optional[List[str]] = None

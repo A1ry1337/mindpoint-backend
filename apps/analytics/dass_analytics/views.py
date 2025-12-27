@@ -3,7 +3,8 @@ from typing import Optional
 from apps.auth_user.permissions import JWTAuthManager
 from apps.analytics.dass_analytics.services import StatisticsService
 from apps.analytics.dass_analytics.schemas import MentalStatisticsOut, TestCountOut, TeamsTestComparisonOut, \
-    TeamsTestComparisonIn, RiskTeamsOut, RiskTeamsIn, SeverityTeamsIn, SeverityTeamsOut
+    TeamsTestComparisonIn, RiskTeamsOut, RiskTeamsIn, SeverityTeamsIn, SeverityTeamsOut, TeamsPeriodicTestCountOut, \
+    TeamsPeriodicTestCountIn
 
 router = Router(tags=["Аналитика DASS"])
 
@@ -82,3 +83,12 @@ def get_severity_distribution(request, payload: SeverityTeamsIn):
         team_ids=payload.team_ids,
         period=payload.period
     )
+
+@router.post("/periodic_test_counts", response=TeamsPeriodicTestCountOut, auth=JWTAuthManager())
+def get_periodic_test_counts(request, payload: TeamsPeriodicTestCountIn):
+    """
+    Возвращает ОБЩЕЕ количество прохождений теста DASS9 за периоды: неделя, месяц, год
+    по всем командам менеджера (или по выбранным).
+    """
+    manager_id = request.auth["user_id"]
+    return StatisticsService.get_periodic_test_counts(manager_id, team_ids=payload.team_ids)
