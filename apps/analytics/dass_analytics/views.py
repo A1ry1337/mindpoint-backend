@@ -4,7 +4,7 @@ from apps.auth_user.permissions import JWTAuthManager
 from apps.analytics.dass_analytics.services import StatisticsService
 from apps.analytics.dass_analytics.schemas import MentalStatisticsOut, TestCountOut, TeamsTestComparisonOut, \
     TeamsTestComparisonIn, RiskTeamsOut, RiskTeamsIn, SeverityTeamsIn, SeverityTeamsOut, TeamsPeriodicTestCountOut, \
-    TeamsPeriodicTestCountIn
+    TeamsPeriodicTestCountIn, PeriodSeverityResponse, PeriodSeverityRequest
 
 router = Router(tags=["Аналитика DASS"])
 
@@ -92,3 +92,22 @@ def get_periodic_test_counts(request, payload: TeamsPeriodicTestCountIn):
     """
     manager_id = request.auth["user_id"]
     return StatisticsService.get_periodic_test_counts(manager_id, team_ids=payload.team_ids)
+
+@router.post("/severity_trends", response=PeriodSeverityResponse, auth=JWTAuthManager())
+def get_severity_trends(request, payload: PeriodSeverityRequest):
+    """
+    Возвращает распределение сотрудников по уровням тяжести (Normal, Mild, Moderate, High, Very_High)
+    для депрессии, тревоги и стресса с разбивкой по периодам:
+    - week → 7 дней (по дням)
+    - month → 4 недели (по неделям)
+    - year → 12 месяцев (по месяцам)
+
+    Каждый элемент содержит метаинформацию (label, start, end) и 5 уровней с количеством и процентом.
+    Если в периоде нет данных — все значения будут 0.
+    """
+    manager_id = request.auth["user_id"]
+    return StatisticsService.get_severity_trends_by_period(
+        manager_id=manager_id,
+        team_ids=payload.team_ids,
+        period=payload.period
+    )

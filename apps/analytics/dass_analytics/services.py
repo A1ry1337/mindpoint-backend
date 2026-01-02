@@ -1,4 +1,4 @@
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Literal
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from datetime import date, timedelta
@@ -452,3 +452,119 @@ class StatisticsService:
             counts[period_name] = cnt
 
         return {"counts": counts}
+
+    @staticmethod
+    def get_severity_trends_by_period(
+            manager_id: str,
+            team_ids: Optional[List[str]] = None,
+            period: Literal["week", "month", "year"] = "week"
+    ) -> Dict[str, any]:
+        """
+        Возвращает распределение по уровням тяжести (Normal, Mild, ..., Very_High)
+        для depression, anxiety, stress по заданным периодам.
+        """
+        # Получаем все ID участников
+        teams_qs = Team.objects.filter(manager_id=manager_id)
+        if team_ids:
+            teams_qs = teams_qs.filter(id__in=team_ids)
+
+        all_member_ids = set()
+        for team in teams_qs:
+            all_member_ids.update(team.members.values_list("id", flat=True))
+
+        # Уровни тяжести — как у вас
+        SEVERITY_LEVELS = {
+            "depression": [
+                ("Normal", 0, 2),
+                ("Mild", 3, 3),
+                ("Moderate", 4, 4),
+                ("High", 5, 6),
+                ("Very_High", 7, 9),
+            ],
+            "anxiety": [
+                ("Normal", 0, 1),
+                ("Mild", 2, 2),
+                ("Moderate", 3, 3),
+                ("High", 4, 5),
+                ("Very_High", 6, 9),
+            ],
+            "stress": [
+                ("Normal", 0, 2),
+                ("Mild", 3, 3),
+                ("Moderate", 4, 4),
+                ("High", 5, 6),
+                ("Very_High", 7, 9),
+            ]
+        }
+
+        intervals = DassAnalyticsUtils.get_intervals_with_labels(period)
+
+        result = {
+            "period": period,
+            "depression": [],
+            "anxiety": [],
+            "stress": [],
+        }
+
+        for start, end, label in intervals:
+            base_meta = {
+                "label": label,
+                "start": start.isoformat(),
+                "end": end.isoformat(),
+            }
+
+            # Получаем средние баллы по каждому пользователю за период
+            user_scores = Dass9Result.objects.filter(
+                user_id__in=all_member_ids,
+                date__range=[start, end]
+            ).values('user_id').annotate(
+                avg_depression=Avg('depression_score'),
+                avg_anxiety=Avg('anxiety_score'),
+                avg_stress=Avg('stress_score')
+            )
+
+            # Собираем округлённые баллы
+            scores_by_user = []
+            for row in user_scores:
+                scores_by_user.append({
+                    "depression": round(row['avg_depression']) if row['avg_depression'] is not None else None,
+                    "anxiety": round(row['avg_anxiety']) if row['avg_anxiety'] is not None else None,
+                    "stress": round(row['avg_stress']) if row['avg_stress'] is not None else None,
+                })
+
+            total_tested = len(scores_by_user)
+
+            # Функция для расчёта распределения по одной категории
+            def build_severity_data(metric: str):
+                level_counts = {level[0]: 0 for level in SEVERITY_LEVELS[metric]}
+
+                for score_record in scores_by_user:
+                    score = score_record[metric]
+                    if score is None:
+                        continue
+                    # Определяем уровень
+                    for level_name, min_s, max_s in SEVERITY_LEVELS[metric]:
+                        if min_s <= score <= max_s:
+                            level_counts[level_name] += 1
+                            break
+
+                severity_obj = {}
+                for level_name, _, _ in SEVERITY_LEVELS[metric]:
+                    count = level_counts[level_name]
+                    pct = round((count / total_tested) * 100, 2) if total_tested > 0 else 0.0
+                    severity_obj[level_name] = {
+                        "members": count,
+                        "percent": pct
+                    }
+                return severity_obj
+
+            # Собираем данные для трёх категорий
+            dep_data = {**base_meta, **build_severity_data("depression")}
+            anx_data = {**base_meta, **build_severity_data("anxiety")}
+            str_data = {**base_meta, **build_severity_data("stress")}
+
+            result["depression"].append(dep_data)
+            result["anxiety"].append(anx_data)
+            result["stress"].append(str_data)
+
+        return result

@@ -100,3 +100,27 @@ class TeamsPeriodicTestCountOut(Schema):
 
 class TeamsPeriodicTestCountIn(Schema):
     team_ids: Optional[List[str]] = None
+
+class SeverityLevelSchema(Schema):
+    members: int
+    percent: float
+
+class PeriodSeverityItem(Schema):
+    label: str
+    start: str
+    end: str
+    Normal: SeverityLevelSchema
+    Mild: SeverityLevelSchema
+    Moderate: SeverityLevelSchema
+    High: SeverityLevelSchema
+    Very_High: SeverityLevelSchema
+
+class PeriodSeverityResponse(Schema):
+    period: Literal["week", "month", "year"]
+    depression: List[PeriodSeverityItem]
+    anxiety: List[PeriodSeverityItem]
+    stress: List[PeriodSeverityItem]
+
+class PeriodSeverityRequest(Schema):
+    team_ids: Optional[List[str]] = None
+    period: Literal["week", "month", "year"] = "week"

@@ -1,4 +1,7 @@
+from calendar import monthrange
 from datetime import date, timedelta
+from typing import List
+
 
 class DassAnalyticsUtils:
 
@@ -50,3 +53,50 @@ class DassAnalyticsUtils:
             raise ValueError("Invalid period type")
 
         return start, end
+
+    @staticmethod
+    def get_intervals_with_labels(period: str) -> list[tuple[date, date, str]]:
+        today = date.today()
+
+        if period == "week":
+            intervals = []
+            for i in range(6, -1, -1):
+                d = today - timedelta(days=i)
+                label = d.strftime("%d %b")
+                intervals.append((d, d, label))
+            return intervals
+
+        elif period == "month":
+            intervals = []
+            for i in range(3, -1, -1):
+                end = today - timedelta(days=7 * i)
+                start = end - timedelta(days=6)
+                label = f"{start.strftime('%d')}–{end.strftime('%d %b')}"
+                intervals.append((start, end, label))
+            return intervals
+
+        elif period == "year":
+            intervals = []
+            for i in range(11, -1, -1):
+                if i == 0:
+                    year = today.year
+                    month = today.month
+                    start = date(year, month, 1)
+                    end = today
+                else:
+                    month_offset = today.month - i
+                    if month_offset <= 0:
+                        year = today.year - 1
+                        month = 12 + month_offset
+                    else:
+                        year = today.year
+                        month = month_offset
+                    _, last_day = monthrange(year, month)
+                    start = date(year, month, 1)
+                    end = date(year, month, last_day)
+                label = start.strftime("%b %Y")
+                intervals.append((start, end, label))
+            return intervals
+
+        else:
+            raise ValueError("period must be 'week', 'month', or 'year'")
