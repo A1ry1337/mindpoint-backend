@@ -4,7 +4,8 @@ from apps.auth_user.permissions import JWTAuthManager
 from apps.analytics.dass_analytics.services import StatisticsService
 from apps.analytics.dass_analytics.schemas import MentalStatisticsOut, TestCountOut, TeamsTestComparisonOut, \
     TeamsTestComparisonIn, RiskTeamsOut, RiskTeamsIn, SeverityTeamsIn, SeverityTeamsOut, TeamsPeriodicTestCountOut, \
-    TeamsPeriodicTestCountIn, PeriodSeverityResponse, PeriodSeverityRequest
+    TeamsPeriodicTestCountIn, PeriodSeverityResponse, PeriodSeverityRequest, TestingCoverageRequest, \
+    TestingCoverageResponse
 
 router = Router(tags=["Аналитика DASS"])
 
@@ -107,6 +108,26 @@ def get_severity_trends(request, payload: PeriodSeverityRequest):
     """
     manager_id = request.auth["user_id"]
     return StatisticsService.get_severity_trends_by_period(
+        manager_id=manager_id,
+        team_ids=payload.team_ids,
+        period=payload.period
+    )
+
+@router.post("/testing_coverage", response=TestingCoverageResponse, auth=JWTAuthManager())
+def get_testing_coverage(request, payload: TestingCoverageRequest):
+    """
+    Возвращает процент покрытия тестированием DASS9 по командам за период:
+    - week: последние 7 дней
+    - month: последние 31 день
+    - year: последние 365 дней
+
+    Процент рассчитывается как:
+      (фактические прохождения) / (рабочие дни × участники) × 100
+
+    Рабочие дни = понедельник–пятница.
+    """
+    manager_id = request.auth["user_id"]
+    return StatisticsService.get_testing_coverage_by_teams(
         manager_id=manager_id,
         team_ids=payload.team_ids,
         period=payload.period

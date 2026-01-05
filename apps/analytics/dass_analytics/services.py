@@ -1,4 +1,4 @@
-from typing import Dict, Optional, List, Literal
+from typing import Dict, Optional, List, Literal, Any
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from datetime import date, timedelta
@@ -568,3 +568,89 @@ class StatisticsService:
             result["stress"].append(str_data)
 
         return result
+
+    @staticmethod
+    def get_testing_coverage_by_teams(
+            manager_id: str,
+            team_ids: Optional[List[str]] = None,
+            period: Literal["week", "month", "year"] = "week"
+    ) -> Dict[str, Any]:
+        """
+        Возвращает статистику покрытия тестированием по командам за указанный период:
+        - week: последние 7 дней
+        - month: последние 31 день
+        - year: последние 365 дней
+
+        Для каждого участника считается количество рабочих дней (пн-пт) в периоде.
+        Процент = (фактические прохождения) / (рабочие дни * участники) * 100
+        """
+        from calendar import weekday  # weekday: Monday=0, Sunday=6
+
+        # Определение периода
+        today = date.today()
+        days_map = {"week": 7, "month": 31, "year": 365}
+        if period not in days_map:
+            raise ValueError("period must be 'week', 'month', or 'year'")
+        days = days_map[period]
+        start_date = today - timedelta(days=days - 1)
+        end_date = today
+
+        # Получаем команды
+        teams_qs = Team.objects.filter(manager_id=manager_id)
+        if team_ids:
+            teams_qs = teams_qs.filter(id__in=team_ids)
+
+        # Генерируем список рабочих дней в периоде (пн–пт)
+        current = start_date
+        working_days = []
+        while current <= end_date:
+            if weekday(current.year, current.month, current.day) < 5:  # 0–4 = пн–пт
+                working_days.append(current)
+            current += timedelta(days=1)
+        total_working_days = len(working_days)
+
+        results = []
+
+        for team in teams_qs:
+            members = list(team.members.all())
+            total_members = len(members)
+            if total_members == 0:
+                results.append({
+                    "team_id": str(team.id),
+                    "team_name": team.name,
+                    "total_members": 0,
+                    "completed_tests": 0,
+                    "max_possible_tests": 0,
+                    "coverage_percent": 0.0
+                })
+                continue
+
+            member_ids = [m.id for m in members]
+
+            # Фактические прохождения
+            completed_tests = Dass9Result.objects.filter(
+                user_id__in=member_ids,
+                date__range=[start_date, end_date]
+            ).count()
+
+            # Максимум: рабочие дни × участники
+            max_possible = total_working_days * total_members
+
+            if max_possible == 0:
+                coverage_percent = 0.0
+            else:
+                coverage_percent = round((completed_tests / max_possible) * 100, 2)
+
+            results.append({
+                "team_id": str(team.id),
+                "team_name": team.name,
+                "total_members": total_members,
+                "completed_tests": completed_tests,
+                "max_possible_tests": max_possible,
+                "coverage_percent": coverage_percent
+            })
+
+        return {
+            "period": period,
+            "teams": results
+        }

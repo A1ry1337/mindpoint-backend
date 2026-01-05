@@ -124,3 +124,19 @@ class PeriodSeverityResponse(Schema):
 class PeriodSeverityRequest(Schema):
     team_ids: Optional[List[str]] = None
     period: Literal["week", "month", "year"] = "week"
+
+class TeamCoverageSchema(Schema):
+    team_id: str
+    team_name: str
+    total_members: int
+    completed_tests: int
+    max_possible_tests: int
+    coverage_percent: float
+
+class TestingCoverageResponse(Schema):
+    period: Literal["week", "month", "year"]
+    teams: List[TeamCoverageSchema]
+
+class TestingCoverageRequest(Schema):
+    team_ids: Optional[List[str]] = None
+    period: Literal["week", "month", "year"] = "week"
