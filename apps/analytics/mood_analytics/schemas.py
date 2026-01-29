@@ -30,3 +30,26 @@ class TeamsMoodRequestIn(Schema):
 
 class TeamsMoodResponseOut(Schema):
     items: List[TeamMoodStatsOut]
+
+
+class MoodScorePercentOut(Schema):
+    score: int          # 1–5
+    percent: float      # процент людей
+
+
+class MoodPeriodDistributionOut(Schema):
+    period_label: str
+    start_date: date
+    end_date: date
+    total_members: int
+    scores: List[MoodScorePercentOut]
+
+
+class TeamsMoodDistributionRequestIn(Schema):
+    period: str                     # day | week | month | year
+    team_ids: Optional[List[UUID]] = None
+
+
+class TeamsMoodDistributionResponseOut(Schema):
+    period: str
+    points: List[MoodPeriodDistributionOut]

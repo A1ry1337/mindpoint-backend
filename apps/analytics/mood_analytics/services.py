@@ -2,8 +2,10 @@ from datetime import date, timedelta
 from typing import List, Optional, Dict
 from uuid import UUID
 
-from django.db.models import Count
+from django.db.models import Count, Avg
 from django.utils import timezone
+
+from collections import defaultdict
 
 from apps.assessments.mood.models import MoodResult
 from apps.manager.management.models import Team
@@ -156,3 +158,79 @@ class MoodStatisticsService:
                 year -= 1
 
         return ranges
+
+
+    PERIOD_TO_DAYS = {
+        "day": 1,
+        "week": 7,
+        "month": 31,
+        "year": 365,
+    }
+
+    @staticmethod
+    def get_mood_distribution(
+        manager_id: int,
+        period: str,
+        team_ids: Optional[List[UUID]] = None,
+    ) -> Dict:
+
+        days = MoodStatisticsService.PERIOD_TO_DAYS.get(period, 7)
+
+        today = timezone.now().date()
+        start_date = today - timedelta(days=days - 1)
+
+        teams_qs = Team.objects.filter(manager_id=manager_id)
+        if team_ids:
+            teams_qs = teams_qs.filter(id__in=team_ids)
+
+        members = (
+            Team.objects
+            .filter(id__in=teams_qs.values_list("id", flat=True))
+            .values_list("members", flat=True)
+            .distinct()
+        )
+
+        total_members = len(members)
+
+        if total_members == 0:
+            return {"period": period, "points": []}
+
+        # средний скор пользователя за период
+        user_avg_scores = (
+            MoodResult.objects
+            .filter(
+                user__in=members,
+                date__gte=start_date,
+                date__lte=today,
+            )
+            .values("user")
+            .annotate(avg_score=Avg("score"))
+        )
+
+        buckets = defaultdict(int)
+
+        for row in user_avg_scores:
+            score = round(row["avg_score"])
+            score = max(1, min(5, int(score)))
+            buckets[score] += 1
+
+        scores = []
+        for s in range(1, 6):
+            percent = (buckets.get(s, 0) / total_members) * 100
+            scores.append({
+                "score": s,
+                "percent": round(percent, 2),
+            })
+
+        return {
+            "period": period,
+            "points": [
+                {
+                    "period_label": f"Последние {days} дней",
+                    "start_date": start_date,
+                    "end_date": today,
+                    "total_members": total_members,
+                    "scores": scores,
+                }
+            ],
+        }
