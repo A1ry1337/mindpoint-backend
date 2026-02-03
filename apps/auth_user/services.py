@@ -13,18 +13,19 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 150000
 # REFRESH_TOKEN_EXPIRE_DAYS = 7
 REFRESH_TOKEN_EXPIRE_DAYS =   150000
 
-def create_access_token(user_id: int, is_manager: bool):
+def create_access_token(user_id: int, is_manager: bool, is_teamlead: bool):
     expire = timezone.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {
         "user_id": user_id,
         "is_manager": is_manager,
+        "is_teamlead": is_teamlead,
         "exp": int(expire.timestamp()),
         "type": "access",
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def create_refresh_token(user_id: int, is_manager: bool, *, replace_token: str | None = None) -> str | None:
+def create_refresh_token(user_id: int, is_manager: bool, is_teamlead: bool, *, replace_token: str | None = None) -> str | None:
     """
     Создаёт новый refresh-токен для пользователя.
 
@@ -53,6 +54,7 @@ def create_refresh_token(user_id: int, is_manager: bool, *, replace_token: str |
     payload = {
         "user_id": user_id,
         "is_manager": is_manager,
+        "is_teamlead": is_teamlead,
         "exp": int(expire.timestamp()),
         "type": "refresh",
         "jti": str(uuid4()),
