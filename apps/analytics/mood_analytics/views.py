@@ -3,9 +3,7 @@ from ninja import Router
 from apps.analytics.mood_analytics.schemas import TeamsMoodResponseOut, TeamsMoodRequestIn, \
     TeamsMoodDistributionResponseOut, TeamsMoodDistributionRequestIn
 from apps.analytics.mood_analytics.services import MoodStatisticsService
-from apps.auth_user.permissions import JWTAuthManager
-
-
+from apps.auth_user.permissions import JWTAuthManager, JWTAuthTeamLead
 
 router = Router(tags=["Аналитика настроения"])
 
@@ -33,7 +31,7 @@ def get_teams_mood(request, payload: TeamsMoodRequestIn):
 @router.post(
     "/teams_mood_distribution",
     response=TeamsMoodDistributionResponseOut,
-    auth=JWTAuthManager(),
+    auth=[JWTAuthManager(), JWTAuthTeamLead()],
 )
 def get_teams_mood_distribution(request, payload: TeamsMoodDistributionRequestIn):
     """
@@ -46,7 +44,7 @@ def get_teams_mood_distribution(request, payload: TeamsMoodDistributionRequestIn
         - если нет → считаем по всем командам менеджера
     """
 
-    manager_id = request.auth["user_id"]
+    manager_id = request.auth["manager_id"]
 
     return MoodStatisticsService.get_mood_distribution(
         manager_id=manager_id,

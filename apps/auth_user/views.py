@@ -58,8 +58,13 @@ def login(request, data: UserCreateSchema):
     if not user:
         raise HttpError(401, "Invalid credentials")
 
-    access = create_access_token(user.id.int, user.is_manager, user.is_teamlead)
-    refresh = create_refresh_token(user.id.int, user.is_manager, user.is_teamlead)
+    if user.is_manager is True:
+        manager_id = user.id
+    else:
+        manager_id = user.manager_id
+
+    access = create_access_token(user.id.int, user.is_manager, user.is_teamlead, manager_id)
+    refresh = create_refresh_token(user.id.int, user.is_manager, user.is_teamlead, manager_id)
 
     response = Response({
         "access": access,
@@ -97,8 +102,8 @@ def refresh_token(request):
     if not payload:
         raise HttpError(401, "Invalid refresh token")
 
-    access = create_access_token(payload['user_id'], payload['is_manager'], payload['is_teamlead'])
-    new_refresh = create_refresh_token(payload['user_id'], payload['is_manager'], payload['is_teamlead'], replace_token=refresh_token_from_cookies)
+    access = create_access_token(payload['user_id'], payload['is_manager'], payload['is_teamlead'], payload['manager_id'])
+    new_refresh = create_refresh_token(payload['user_id'], payload['is_manager'], payload['is_teamlead'], payload['manager_id'], replace_token=refresh_token_from_cookies)
 
     response = Response({"access": access})
     response.set_cookie(
