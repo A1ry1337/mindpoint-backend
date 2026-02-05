@@ -169,7 +169,9 @@ class MoodStatisticsService:
 
     @staticmethod
     def get_mood_distribution(
+        is_manager: bool,
         manager_id: int,
+        user_id: int,
         period: str,
         team_ids: Optional[List[UUID]] = None,
     ) -> Dict:

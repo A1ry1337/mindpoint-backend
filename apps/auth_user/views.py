@@ -59,9 +59,9 @@ def login(request, data: UserCreateSchema):
         raise HttpError(401, "Invalid credentials")
 
     if user.is_manager is True:
-        manager_id = user.id
+        manager_id = user.id.int
     else:
-        manager_id = user.manager_id
+        manager_id = user.manager_id.int
 
     access = create_access_token(user.id.int, user.is_manager, user.is_teamlead, manager_id)
     refresh = create_refresh_token(user.id.int, user.is_manager, user.is_teamlead, manager_id)

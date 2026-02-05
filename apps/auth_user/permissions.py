@@ -16,6 +16,9 @@ class JWTAuthManager(HttpBearer):
             raise HttpError(401, "Invalid or expired token")
         if payload['is_manager'] is False:
             raise HttpError(403, "No permission")
+
+        payload["role"] = "manager"
+
         return payload
 
 class JWTAuthTeamLead(HttpBearer):
@@ -25,4 +28,7 @@ class JWTAuthTeamLead(HttpBearer):
             raise HttpError(401, "Invalid or expired token")
         if payload['is_teamlead'] is False:
             raise HttpError(403, "No permission")
+
+        payload["role"] = "teamlead"
+
         return payload

@@ -45,9 +45,13 @@ def get_teams_mood_distribution(request, payload: TeamsMoodDistributionRequestIn
     """
 
     manager_id = request.auth["manager_id"]
+    is_manager = True if request.auth["role"] == "manager" else False
+    user_id = request.auth["user_id"]
 
     return MoodStatisticsService.get_mood_distribution(
+        is_manager=is_manager,
         manager_id=manager_id,
+        user_id=user_id,
         period=payload.period,
         team_ids=payload.team_ids,
     )
