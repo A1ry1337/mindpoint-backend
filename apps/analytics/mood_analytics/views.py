@@ -3,12 +3,12 @@ from ninja import Router
 from apps.analytics.mood_analytics.schemas import TeamsMoodResponseOut, TeamsMoodRequestIn, \
     TeamsMoodDistributionResponseOut, TeamsMoodDistributionRequestIn
 from apps.analytics.mood_analytics.services import MoodStatisticsService
-from apps.auth_user.permissions import JWTAuthManager, JWTAuthTeamLead
+from apps.auth_user.permissions import JWTAuthManagerOrTeamLead
 
 router = Router(tags=["Аналитика настроения"])
 
 
-@router.post("/teams_mood", response=TeamsMoodResponseOut, auth=JWTAuthManager())
+@router.post("/teams_mood", response=TeamsMoodResponseOut, auth=JWTAuthManagerOrTeamLead())
 def get_teams_mood(request, payload: TeamsMoodRequestIn):
     """
     Возвращает статистику настроения (1–5) по командам менеджера.
@@ -21,8 +21,13 @@ def get_teams_mood(request, payload: TeamsMoodRequestIn):
     - team_id (опционально): если задано — только эта команда,
       если нет — все команды менеджера.
     """
-    manager_id = request.auth["user_id"]
+    manager_id = request.auth["manager_id"]
+    is_manager = request.auth["is_manager"]
+    user_id = request.auth["user_id"]
+
     return MoodStatisticsService.get_teams_mood(
+        is_manager=is_manager,
+        user_id=user_id,
         manager_id=manager_id,
         period=payload.period,
         team_id=payload.team_id,
@@ -31,7 +36,7 @@ def get_teams_mood(request, payload: TeamsMoodRequestIn):
 @router.post(
     "/teams_mood_distribution",
     response=TeamsMoodDistributionResponseOut,
-    auth=[JWTAuthManager(), JWTAuthTeamLead()],
+    auth=JWTAuthManagerOrTeamLead(),
 )
 def get_teams_mood_distribution(request, payload: TeamsMoodDistributionRequestIn):
     """
@@ -45,7 +50,7 @@ def get_teams_mood_distribution(request, payload: TeamsMoodDistributionRequestIn
     """
 
     manager_id = request.auth["manager_id"]
-    is_manager = True if request.auth["role"] == "manager" else False
+    is_manager = request.auth["is_manager"]
     user_id = request.auth["user_id"]
 
     return MoodStatisticsService.get_mood_distribution(

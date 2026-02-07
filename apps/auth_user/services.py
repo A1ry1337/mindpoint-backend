@@ -13,11 +13,11 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 150000
 # REFRESH_TOKEN_EXPIRE_DAYS = 7
 REFRESH_TOKEN_EXPIRE_DAYS =   150000
 
-def create_access_token(user_id: int, is_manager: bool, is_teamlead: bool, manager_id: int):
+def create_access_token(user_id: str, is_manager: bool, is_teamlead: bool, manager_id: str):
     expire = timezone.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {
-        "user_id": user_id,
-        "manager_id": manager_id,
+        "user_id": str(user_id),
+        "manager_id":  str(manager_id),
         "is_manager": is_manager,
         "is_teamlead": is_teamlead,
         "exp": int(expire.timestamp()),
@@ -26,7 +26,7 @@ def create_access_token(user_id: int, is_manager: bool, is_teamlead: bool, manag
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def create_refresh_token(user_id: int, is_manager: bool, is_teamlead: bool, manager_id: int, *, replace_token: str | None = None) -> str | None:
+def create_refresh_token(user_id: str, is_manager: bool, is_teamlead: bool, manager_id: str, *, replace_token: str | None = None) -> str | None:
     """
     Создаёт новый refresh-токен для пользователя.
 
@@ -53,9 +53,9 @@ def create_refresh_token(user_id: int, is_manager: bool, is_teamlead: bool, mana
             tokens_qs.first().delete()
 
     payload = {
-        "user_id": user_id,
+        "user_id": str(user_id),
         "is_manager": is_manager,
-        "manager_id": manager_id,
+        "manager_id": str(manager_id),
         "is_teamlead": is_teamlead,
         "exp": int(expire.timestamp()),
         "type": "refresh",

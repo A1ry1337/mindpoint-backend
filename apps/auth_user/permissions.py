@@ -16,19 +16,19 @@ class JWTAuthManager(HttpBearer):
             raise HttpError(401, "Invalid or expired token")
         if payload['is_manager'] is False:
             raise HttpError(403, "No permission")
-
-        payload["role"] = "manager"
-
         return payload
 
-class JWTAuthTeamLead(HttpBearer):
+class JWTAuthManagerOrTeamLead(HttpBearer):
     def authenticate(self, request, token):
-        payload = verify_token(token, token_type="access")
-        if payload is None:
-            raise HttpError(401, "Invalid or expired token")
-        if payload['is_teamlead'] is False:
-            raise HttpError(403, "No permission")
+        payload = verify_token(token)
 
-        payload["role"] = "teamlead"
+        if not payload:
+            raise HttpError(401, "Invalid token")
 
-        return payload
+        if payload.get("is_manager"):
+            return payload
+
+        if payload.get("is_teamlead"):
+            return payload
+
+        raise HttpError(403, "No permission")

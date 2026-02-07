@@ -14,7 +14,9 @@ class MoodStatisticsService:
 
     @staticmethod
     def get_teams_mood(
-        manager_id: int,
+        is_manager: bool,
+        user_id: str,
+        manager_id: str,
         period: str,
         team_id: Optional[UUID] = None
     ) -> Dict:
@@ -45,6 +47,9 @@ class MoodStatisticsService:
 
         if team_id:
             teams_qs = teams_qs.filter(id=team_id)
+
+        if not is_manager:
+            teams_qs = teams_qs.filter(team_leads__id=user_id)
 
         teams = list(teams_qs)
 
@@ -184,6 +189,9 @@ class MoodStatisticsService:
         teams_qs = Team.objects.filter(manager_id=manager_id)
         if team_ids:
             teams_qs = teams_qs.filter(id__in=team_ids)
+
+        if not is_manager:
+            teams_qs = teams_qs.filter(team_leads__id=user_id)
 
         members = (
             Team.objects
