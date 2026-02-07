@@ -1,6 +1,6 @@
 from ninja import Router, Query
 from typing import Optional
-from apps.auth_user.permissions import JWTAuthManager
+from apps.auth_user.permissions import JWTAuthManager, JWTAuthManagerOrTeamLead
 from apps.analytics.dass_analytics.services import StatisticsService
 from apps.analytics.dass_analytics.schemas import MentalStatisticsOut, TestCountOut, TeamsTestComparisonOut, \
     TeamsTestComparisonIn, RiskTeamsOut, RiskTeamsIn, SeverityTeamsIn, SeverityTeamsOut, TeamsPeriodicTestCountOut, \
@@ -9,7 +9,7 @@ from apps.analytics.dass_analytics.schemas import MentalStatisticsOut, TestCount
 
 router = Router(tags=["Аналитика DASS"])
 
-@router.get("/ips_overview", response=MentalStatisticsOut, auth=JWTAuthManager())
+@router.get("/ips_overview", response=MentalStatisticsOut, auth=JWTAuthManagerOrTeamLead())
 def get_mental_statistics(
         request,
         period: Optional[str] = Query("day", description="day | week | month | year")
@@ -18,8 +18,10 @@ def get_mental_statistics(
     Возвращает статистику IPS, тревожности, депрессии и стресса
     с динамикой изменения за предыдущий период.
     """
-    manager_id = request.auth["user_id"]
-    return StatisticsService.get_ips_overview(manager_id, period=period)
+    manager_id = request.auth["manager_id"]
+    is_manager = request.auth["is_manager"]
+    user_id = request.auth["user_id"]
+    return StatisticsService.get_ips_overview(manager_id, is_manager, user_id, period=period)
 
 @router.get("/test_count", response=TestCountOut, auth=JWTAuthManager())
 def get_test_count(

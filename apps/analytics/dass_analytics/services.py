@@ -27,15 +27,26 @@ class StatisticsService:
 
     @staticmethod
     def get_ips_overview(manager_id: str,
-                              team_id: Optional[str] = None,
-                              period: str = "day") -> Dict[str, any]:
+                         is_manager: bool,
+                         user_id: str,
+                         team_id: Optional[str] = None,
+                         period: str = "day") -> Dict[str, any]:
         start, end, prev_start, prev_end = DassAnalyticsUtils.get_current_and_previous_period_dates(period)
 
         if team_id:
             team = get_object_or_404(Team, id=team_id, manager_id=manager_id)
+
+            if not is_manager:
+                team = get_object_or_404(Team, id=team_id, manager_id=manager_id, team_leads__id=user_id)
+
             member_ids = team.members.values_list("id", flat=True)
         else:
-            member_ids = User.objects.filter(manager_id=manager_id).values_list("id", flat=True)
+            users_qs = User.objects.filter(manager_id=manager_id)
+
+            if not is_manager:
+                users_qs = users_qs.filter(member_teams__team_leads__id=user_id).distinct()
+
+            member_ids = users_qs.values_list("id", flat=True)
 
         # Текущий и предыдущий периоды
         qs = Dass9Result.objects.filter(user_id__in=member_ids, date__range=[start, end])
