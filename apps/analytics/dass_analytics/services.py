@@ -113,6 +113,8 @@ class StatisticsService:
 
     @staticmethod
     def get_test_count(manager_id: str,
+                       is_manager: bool,
+                       user_id: str,
                        team_id: str,
                        period: str = "week") -> Dict[str, any]:
         """
@@ -120,7 +122,12 @@ class StatisticsService:
         (дня, недели, месяца или года) для выбранной команды.
         Если данных нет — добавляется сообщение.
         """
-        team = get_object_or_404(Team, id=team_id, manager_id=manager_id)
+
+        if is_manager:
+            team = get_object_or_404(Team, id=team_id, manager_id=manager_id)
+        else:
+            team = get_object_or_404(Team, id=team_id, manager_id=manager_id, team_leads__id=user_id)
+
         member_ids = team.members.values_list("id", flat=True)
 
         periods: List[Dict] = []
@@ -150,6 +157,8 @@ class StatisticsService:
 
     @staticmethod
     def get_teams_test_comparison(manager_id: str,
+                                  is_manager: bool,
+                                  user_id: str,
                                   period: str = "week",
                                   team_ids: Optional[List[str]] = None) -> Dict[str, any]:
         """
@@ -159,6 +168,8 @@ class StatisticsService:
         teams_qs = Team.objects.filter(manager_id=manager_id)
         if team_ids:
             teams_qs = teams_qs.filter(id__in=team_ids)
+        if not is_manager:
+            teams_qs = teams_qs.filter(team_leads__id=user_id)
 
         teams = list(teams_qs)
         start, end, prev_start, prev_end = DassAnalyticsUtils.get_current_and_previous_period_dates(period)
@@ -203,6 +214,8 @@ class StatisticsService:
     @staticmethod
     def get_risk_percent_by_categories(
             manager_id: str,
+            is_manager: bool,
+            user_id: str,
             team_ids: Optional[List[str]] = None,
             period: str = "day"
     ) -> Dict[str, any]:
@@ -220,6 +233,8 @@ class StatisticsService:
         teams_qs = Team.objects.filter(manager_id=manager_id)
         if team_ids:
             teams_qs = teams_qs.filter(id__in=team_ids)
+        if not is_manager:
+            teams_qs = teams_qs.filter(team_leads__id=user_id)
 
         results = []
 
@@ -276,6 +291,8 @@ class StatisticsService:
     @staticmethod
     def get_severity_distribution_by_team(
             manager_id: str,
+            is_manager: bool,
+            user_id: str,
             team_ids: Optional[List[str]] = None,
             period: str = "day"
     ) -> Dict[str, any]:
@@ -296,6 +313,8 @@ class StatisticsService:
         teams = Team.objects.filter(manager_id=manager_id)
         if team_ids:
             teams = teams.filter(id__in=team_ids)
+        if not is_manager:
+            teams = teams.filter(team_leads__id=user_id)
 
         # Уровни тяжести
         SEVERITY_LEVELS = {
@@ -420,7 +439,7 @@ class StatisticsService:
         return {"teams": results}
 
     @staticmethod
-    def get_periodic_test_counts(manager_id: str, team_ids: Optional[List[str]] = None) -> Dict[str, any]:
+    def get_periodic_test_counts(manager_id: str, is_manager: bool, user_id: str, team_ids: Optional[List[str]] = None) -> Dict[str, any]:
         """
         Возвращает ОБЩЕЕ количество прохождений теста DASS9 за периоды:
         - week (последние 7 дней),
@@ -432,6 +451,8 @@ class StatisticsService:
         teams_qs = Team.objects.filter(manager_id=manager_id)
         if team_ids:
             teams_qs = teams_qs.filter(id__in=team_ids)
+        if not is_manager:
+            teams_qs = teams_qs.filter(team_leads__id=user_id)
 
         # Собираем ВСЕ ID участников по всем командам
         all_member_ids = set()
@@ -467,6 +488,8 @@ class StatisticsService:
     @staticmethod
     def get_severity_trends_by_period(
             manager_id: str,
+            is_manager: bool,
+            user_id: str,
             team_ids: Optional[List[str]] = None,
             period: Literal["week", "month", "year"] = "week"
     ) -> Dict[str, any]:
@@ -478,6 +501,8 @@ class StatisticsService:
         teams_qs = Team.objects.filter(manager_id=manager_id)
         if team_ids:
             teams_qs = teams_qs.filter(id__in=team_ids)
+        if not is_manager:
+            teams_qs = teams_qs.filter(team_leads__id=user_id)
 
         all_member_ids = set()
         for team in teams_qs:
@@ -583,6 +608,8 @@ class StatisticsService:
     @staticmethod
     def get_testing_coverage_by_teams(
             manager_id: str,
+            is_manager: bool,
+            user_id: str,
             team_ids: Optional[List[str]] = None,
             period: Literal["week", "month", "year"] = "week"
     ) -> Dict[str, Any]:
@@ -610,6 +637,9 @@ class StatisticsService:
         teams_qs = Team.objects.filter(manager_id=manager_id)
         if team_ids:
             teams_qs = teams_qs.filter(id__in=team_ids)
+        if not is_manager:
+            teams_qs = teams_qs.filter(team_leads__id=user_id)
+
 
         # Генерируем список рабочих дней в периоде (пн–пт)
         current = start_date

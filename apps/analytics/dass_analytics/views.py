@@ -1,6 +1,6 @@
 from ninja import Router, Query
 from typing import Optional
-from apps.auth_user.permissions import JWTAuthManager, JWTAuthManagerOrTeamLead
+from apps.auth_user.permissions import JWTAuthManagerOrTeamLead
 from apps.analytics.dass_analytics.services import StatisticsService
 from apps.analytics.dass_analytics.schemas import MentalStatisticsOut, TestCountOut, TeamsTestComparisonOut, \
     TeamsTestComparisonIn, RiskTeamsOut, RiskTeamsIn, SeverityTeamsIn, SeverityTeamsOut, TeamsPeriodicTestCountOut, \
@@ -23,7 +23,7 @@ def get_mental_statistics(
     user_id = request.auth["user_id"]
     return StatisticsService.get_ips_overview(manager_id, is_manager, user_id, period=period)
 
-@router.get("/test_count", response=TestCountOut, auth=JWTAuthManager())
+@router.get("/test_count", response=TestCountOut, auth=JWTAuthManagerOrTeamLead())
 def get_test_count(
         request,
         period: Optional[str] = Query("week", description="day | week | month | year"),
@@ -34,39 +34,49 @@ def get_test_count(
     (дня, недели, месяца или года) для выбранной команды.
     Если в периоде нет данных — добавляется сообщение "Данные ещё не собраны".
     """
-    manager_id = request.auth["user_id"]
-    return StatisticsService.get_test_count(manager_id, team_id=team_id, period=period)
+    manager_id = request.auth["manager_id"]
+    is_manager = request.auth["is_manager"]
+    user_id = request.auth["user_id"]
+    return StatisticsService.get_test_count(manager_id, is_manager, user_id,  team_id=team_id, period=period)
 
-@router.post("/test_count_common", response=TeamsTestComparisonOut, auth=JWTAuthManager())
+@router.post("/test_count_common", response=TeamsTestComparisonOut, auth=JWTAuthManagerOrTeamLead())
 def get_teams_test_comparison(request, payload: TeamsTestComparisonIn):
     """
     Возвращает количество прохождений теста DASS9 для всех (или выбранных) команд
     за указанный период и предыдущий, с динамикой изменения.
     """
-    manager_id = request.auth["user_id"]
+    manager_id = request.auth["manager_id"]
+    is_manager = request.auth["is_manager"]
+    user_id = request.auth["user_id"]
     return StatisticsService.get_teams_test_comparison(
         manager_id,
+        is_manager,
+        user_id,
         period=payload.period,
         team_ids=payload.team_ids
     )
 
-@router.post("/risk_categories", response=RiskTeamsOut, auth=JWTAuthManager())
+@router.post("/risk_categories", response=RiskTeamsOut, auth=JWTAuthManagerOrTeamLead())
 def get_risk_categories(request, payload: RiskTeamsIn):
     """
     Возвращает процент сотрудников в зоне риска по категориям
     (депрессия, тревога, стресс) по выбранным или всем командам
     с учётом периода: day, week, month, year.
     """
-    manager_id = request.auth["user_id"]
+    manager_id = request.auth["manager_id"]
+    is_manager = request.auth["is_manager"]
+    user_id = request.auth["user_id"]
 
     return StatisticsService.get_risk_percent_by_categories(
         manager_id=manager_id,
+        is_manager=is_manager,
+        user_id=user_id,
         team_ids=payload.team_ids,
         period=payload.period
     )
 
 
-@router.post("/severity_distribution", response= SeverityTeamsOut, auth=JWTAuthManager())
+@router.post("/severity_distribution", response= SeverityTeamsOut, auth=JWTAuthManagerOrTeamLead())
 def get_severity_distribution(request, payload: SeverityTeamsIn):
     """
     Возвращает распределение сотрудников по уровням тяжести
@@ -80,23 +90,29 @@ def get_severity_distribution(request, payload: SeverityTeamsIn):
     Ответ содержит количество участников и процент для каждого уровня тяжести
     по каждой метрике (depression, anxiety, stress) для каждой команды.
     """
-    manager_id = request.auth["user_id"]
+    manager_id = request.auth["manager_id"]
+    is_manager = request.auth["is_manager"]
+    user_id = request.auth["user_id"]
     return StatisticsService.get_severity_distribution_by_team(
         manager_id=manager_id,
+        is_manager=is_manager,
+        user_id=user_id,
         team_ids=payload.team_ids,
         period=payload.period
     )
 
-@router.post("/periodic_test_counts", response=TeamsPeriodicTestCountOut, auth=JWTAuthManager())
+@router.post("/periodic_test_counts", response=TeamsPeriodicTestCountOut, auth=JWTAuthManagerOrTeamLead())
 def get_periodic_test_counts(request, payload: TeamsPeriodicTestCountIn):
     """
     Возвращает ОБЩЕЕ количество прохождений теста DASS9 за периоды: неделя, месяц, год
     по всем командам менеджера (или по выбранным).
     """
-    manager_id = request.auth["user_id"]
-    return StatisticsService.get_periodic_test_counts(manager_id, team_ids=payload.team_ids)
+    manager_id = request.auth["manager_id"]
+    is_manager = request.auth["is_manager"]
+    user_id = request.auth["user_id"]
+    return StatisticsService.get_periodic_test_counts(manager_id, is_manager, user_id, team_ids=payload.team_ids)
 
-@router.post("/severity_trends", response=PeriodSeverityResponse, auth=JWTAuthManager())
+@router.post("/severity_trends", response=PeriodSeverityResponse, auth=JWTAuthManagerOrTeamLead())
 def get_severity_trends(request, payload: PeriodSeverityRequest):
     """
     Возвращает распределение сотрудников по уровням тяжести (Normal, Mild, Moderate, High, Very_High)
@@ -108,14 +124,18 @@ def get_severity_trends(request, payload: PeriodSeverityRequest):
     Каждый элемент содержит метаинформацию (label, start, end) и 5 уровней с количеством и процентом.
     Если в периоде нет данных — все значения будут 0.
     """
-    manager_id = request.auth["user_id"]
+    manager_id = request.auth["manager_id"]
+    is_manager = request.auth["is_manager"]
+    user_id = request.auth["user_id"]
     return StatisticsService.get_severity_trends_by_period(
         manager_id=manager_id,
+        is_manager=is_manager,
+        user_id=user_id,
         team_ids=payload.team_ids,
         period=payload.period
     )
 
-@router.post("/testing_coverage", response=TestingCoverageResponse, auth=JWTAuthManager())
+@router.post("/testing_coverage", response=TestingCoverageResponse, auth=JWTAuthManagerOrTeamLead())
 def get_testing_coverage(request, payload: TestingCoverageRequest):
     """
     Возвращает процент покрытия тестированием DASS9 по командам за период:
@@ -128,9 +148,13 @@ def get_testing_coverage(request, payload: TestingCoverageRequest):
 
     Рабочие дни = понедельник–пятница.
     """
-    manager_id = request.auth["user_id"]
+    manager_id = request.auth["manager_id"]
+    is_manager = request.auth["is_manager"]
+    user_id = request.auth["user_id"]
     return StatisticsService.get_testing_coverage_by_teams(
         manager_id=manager_id,
+        is_manager=is_manager,
+        user_id=user_id,
         team_ids=payload.team_ids,
         period=payload.period
     )
