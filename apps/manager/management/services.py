@@ -71,12 +71,14 @@ class ManagementService:
         }
 
     @staticmethod
-    def get_teams_with_members(manager_id: str, team_id: str | None = None):
+    def get_teams_with_members(manager_id: str, is_manager: bool, user_id: str, team_id: str | None = None):
 
         teams = Team.objects.filter(manager_id=manager_id)
 
         if team_id is not None:
             teams = teams.filter(id=team_id)
+        if not is_manager:
+            teams = teams.filter(team_leads__id=user_id)
 
         teams = teams.prefetch_related("members", "team_leads")
 

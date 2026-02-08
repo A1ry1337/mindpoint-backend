@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404
 from ninja import Router, Query
 
 from apps.auth_user.models import User
-from apps.auth_user.permissions import JWTAuthManager
+from apps.auth_user.permissions import JWTAuthManager, JWTAuthManagerOrTeamLead
 from apps.manager.management.models import Team
 from apps.manager.management.schemas import EmployeeOut, TeamIn, AddMembersIn, TeamDass9ResultOut, \
     TeamWithMembersOut, AssignTeamLeadIn, ManagerRequestResponseIn
@@ -55,22 +55,26 @@ def add_members_to_team(request, data: AddMembersIn):
     manager_id = request.auth["user_id"]
     return ManagementService.add_members_in_team(manager_id, data.team_id, data.user_ids)
 
-@router.get("/get_team_members", auth=JWTAuthManager(), response=List[TeamWithMembersOut])
+@router.get("/get_team_members", auth=JWTAuthManagerOrTeamLead(), response=List[TeamWithMembersOut])
 def get_teams_with_members(request):
     """
     Список команд
     """
-    manager_id = request.auth["user_id"]
-    return ManagementService.get_teams_with_members(manager_id)
+    manager_id = request.auth["manager_id"]
+    is_manager = request.auth["is_manager"]
+    user_id = request.auth["user_id"]
+    return ManagementService.get_teams_with_members(manager_id, is_manager, user_id)
 
-@router.get("/get_team_members/{team_id}", auth=JWTAuthManager(), response=List[TeamWithMembersOut])
+@router.get("/get_team_members/{team_id}", auth=JWTAuthManagerOrTeamLead(), response=List[TeamWithMembersOut])
 def get_team_members(request, team_id: str):
     """
     Возвращает всех участников команды по ID.
     Доступно только руководителю этой команды.
     """
-    manager_id = request.auth["user_id"]
-    return ManagementService.get_teams_with_members(manager_id, team_id)
+    manager_id = request.auth["manager_id"]
+    is_manager = request.auth["is_manager"]
+    user_id = request.auth["user_id"]
+    return ManagementService.get_teams_with_members(manager_id, is_manager, user_id, team_id)
 
 @router.get(
     "/dass_9_result/{team_id}",
