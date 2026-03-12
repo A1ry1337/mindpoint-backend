@@ -42,6 +42,7 @@ class MoodPeriodDistributionOut(Schema):
     start_date: date
     end_date: date
     total_members: int
+    recommendation_trigger: bool
     scores: List[MoodScorePercentOut]
 
 

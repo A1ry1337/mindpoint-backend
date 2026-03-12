@@ -225,8 +225,13 @@ class MoodStatisticsService:
             buckets[score] += 1
 
         scores = []
+        rec_trigger = False
         for s in range(1, 6):
             percent = (buckets.get(s, 0) / total_members) * 100
+
+            if s in range(1, 3) and percent >= 40:
+                rec_trigger = True
+
             scores.append({
                 "score": s,
                 "percent": round(percent, 2),
@@ -236,6 +241,7 @@ class MoodStatisticsService:
             "period": period,
             "points": [
                 {
+                    "recommendation_trigger": rec_trigger,
                     "period_label": f"Последние {days} дней",
                     "start_date": start_date,
                     "end_date": today,
