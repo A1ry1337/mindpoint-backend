@@ -260,6 +260,7 @@ class StatisticsService:
                 date__range=[start_date, end_date]
             ).values_list("user_id", flat=True).distinct().count()
             dep_percent = round(dep_members / total_members * 100, 2) if total_members else None
+            dep_rec_trigger = True if dep_percent >= 40 else False
 
             # ---- ТРЕВОГА >= 4 ----
             anx_members = Dass9Result.objects.filter(
@@ -268,6 +269,7 @@ class StatisticsService:
                 date__range=[start_date, end_date]
             ).values_list("user_id", flat=True).distinct().count()
             anx_percent = round(anx_members / total_members * 100, 2) if total_members else None
+            anx_rec_trigger = True if anx_percent >= 40 else False
 
             # ---- СТРЕСС >= 5 ----
             str_members = Dass9Result.objects.filter(
@@ -276,14 +278,15 @@ class StatisticsService:
                 date__range=[start_date, end_date]
             ).values_list("user_id", flat=True).distinct().count()
             str_percent = round(str_members / total_members * 100, 2) if total_members else None
+            str_rec_trigger = True if str_percent >= 40 else False
 
             results.append({
                 "team_id": str(team.id),
                 "team_name": team.name,
                 "total_members": total_members,
-                "depression": {"risk_members": dep_members, "risk_percent": dep_percent},
-                "anxiety": {"risk_members": anx_members, "risk_percent": anx_percent},
-                "stress": {"risk_members": str_members, "risk_percent": str_percent},
+                "depression": {"risk_members": dep_members, "risk_percent": dep_percent, "recommendation_trigger": dep_rec_trigger},
+                "anxiety": {"risk_members": anx_members, "risk_percent": anx_percent, "recommendation_trigger": anx_rec_trigger},
+                "stress": {"risk_members": str_members, "risk_percent": str_percent, "recommendation_trigger": str_rec_trigger},
             })
 
         return {"teams": results}

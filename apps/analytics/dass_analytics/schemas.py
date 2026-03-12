@@ -46,6 +46,7 @@ class TeamsTestComparisonIn(Schema):
 
 class RiskCategorySchema(Schema):
     risk_members: int
+    recommendation_trigger: bool
     risk_percent: Optional[float]
 
 class RiskTeamSchema(Schema):
