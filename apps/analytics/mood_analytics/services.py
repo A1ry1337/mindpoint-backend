@@ -95,9 +95,29 @@ class MoodStatisticsService:
 
                 team_points.append(point_data)
 
+            rec_trigger = False
+
+            for i in range(len(team_points) - 1):
+                prev = team_points[i]
+                curr = team_points[i + 1]
+
+                if not prev.get("scores") or not curr.get("scores"):
+                    continue
+
+                prev_total = prev["total_responses"]
+                curr_total = curr["total_responses"]
+
+                prev_avg = sum(x["score"] * x["count"] for x in prev["scores"]) / prev_total if prev_total else 0
+                curr_avg = sum(x["score"] * x["count"] for x in curr["scores"]) / curr_total if curr_total else 0
+
+                if 4 <= prev_avg <= 5 and 1 <= curr_avg <= 3:
+                    rec_trigger = True
+                    break
+
             result_items.append({
                 "team_id": team.id,
                 "team_name": team.name,
+                "recommendation_trigger": rec_trigger,
                 "points": team_points,
             })
 

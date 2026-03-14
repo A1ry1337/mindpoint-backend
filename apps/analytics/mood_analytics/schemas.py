@@ -19,6 +19,7 @@ class MoodPeriodPointOut(Schema):
 
 class TeamMoodStatsOut(Schema):
     team_id: UUID
+    recommendation_trigger: bool
     team_name: str
     points: List[MoodPeriodPointOut]
 
