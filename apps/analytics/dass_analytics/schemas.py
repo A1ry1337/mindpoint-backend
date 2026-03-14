@@ -98,8 +98,14 @@ class PeriodicTestCount(Schema):
     month: int
     year: int
 
+class PeriodicTestTriggers(Schema):
+    week: bool
+    month: bool
+    year: bool
+
 class TeamsPeriodicTestCountOut(Schema):
     counts: PeriodicTestCount
+    triggers: PeriodicTestTriggers
 
 class TeamsPeriodicTestCountIn(Schema):
     team_ids: Optional[List[str]] = None

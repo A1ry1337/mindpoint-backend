@@ -512,6 +512,10 @@ class StatisticsService:
         }
 
         counts = {}
+        triggers = {}
+
+        member_count = len(all_member_ids)
+
         for period_name, (start, end) in periods.items():
             cnt = Dass9Result.objects.filter(
                 user_id__in=all_member_ids,
@@ -519,7 +523,10 @@ class StatisticsService:
             ).count()
             counts[period_name] = cnt
 
-        return {"counts": counts}
+            count_days = 7 if period_name == "week" else 31 if period_name == "month" else 365
+            triggers[period_name] = cnt / (5 * member_count * count_days) < 0.6 if member_count else False
+
+        return {"counts": counts, "triggers": triggers}
 
     @staticmethod
     def get_severity_trends_by_period(
@@ -544,7 +551,7 @@ class StatisticsService:
         for team in teams_qs:
             all_member_ids.update(team.members.values_list("id", flat=True))
 
-        # Уровни тяжести — как у вас
+        # Уровни тяжести
         SEVERITY_LEVELS = {
             "depression": [
                 ("Normal", 0, 2),
