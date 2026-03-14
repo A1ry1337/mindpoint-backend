@@ -138,6 +138,7 @@ class TeamCoverageSchema(Schema):
 
 class TestingCoverageResponse(Schema):
     period: Literal["week", "month", "year"]
+    recommendation_trigger: bool
     teams: List[TeamCoverageSchema]
 
 class TestingCoverageRequest(Schema):

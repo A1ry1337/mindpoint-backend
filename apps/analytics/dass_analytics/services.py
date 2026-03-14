@@ -687,6 +687,7 @@ class StatisticsService:
         total_working_days = len(working_days)
 
         results = []
+        rec_trigger = False
 
         for team in teams_qs:
             members = list(team.members.all())
@@ -718,6 +719,9 @@ class StatisticsService:
             else:
                 coverage_percent = round((completed_tests / max_possible) * 100, 2)
 
+            if coverage_percent < 60:
+                rec_trigger = True
+
             results.append({
                 "team_id": str(team.id),
                 "team_name": team.name,
@@ -729,5 +733,6 @@ class StatisticsService:
 
         return {
             "period": period,
+            "recommendation_trigger": rec_trigger,
             "teams": results
         }
