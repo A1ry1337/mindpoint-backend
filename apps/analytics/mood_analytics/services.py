@@ -225,17 +225,19 @@ class MoodStatisticsService:
             buckets[score] += 1
 
         scores = []
-        rec_trigger = False
+        rec_counter = 0
         for s in range(1, 6):
             percent = (buckets.get(s, 0) / total_members) * 100
 
-            if s in range(1, 3) and percent >= 40:
-                rec_trigger = True
+            if s in range(1, 3):
+                rec_counter += percent
 
             scores.append({
                 "score": s,
                 "percent": round(percent, 2),
             })
+
+        rec_trigger = True if rec_counter >= 40 else False
 
         return {
             "period": period,
