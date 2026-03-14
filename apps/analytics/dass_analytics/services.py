@@ -551,6 +551,10 @@ class StatisticsService:
         for team in teams_qs:
             all_member_ids.update(team.members.values_list("id", flat=True))
 
+        depression_trigger = False
+        anxiety_trigger = False
+        stress_trigger = False
+
         # Уровни тяжести
         SEVERITY_LEVELS = {
             "depression": [
@@ -645,6 +649,40 @@ class StatisticsService:
             result["depression"].append(dep_data)
             result["anxiety"].append(anx_data)
             result["stress"].append(str_data)
+
+        for i in range(len(result["depression"]) - 1):
+            curr = result["depression"][i]
+            next_ = result["depression"][i + 1]
+            if (
+                (next_["High"]["percent"] > curr["High"]["percent"] and next_["High"]["percent"] >= 20) or
+                (next_["Very_High"]["percent"] > curr["Very_High"]["percent"] and next_["Very_High"]["percent"] >= 20)
+            ):
+                depression_trigger = True
+                break
+
+        for i in range(len(result["anxiety"]) - 1):
+            curr = result["anxiety"][i]
+            next_ = result["anxiety"][i + 1]
+            if (
+                (next_["High"]["percent"] > curr["High"]["percent"] and next_["High"]["percent"] >= 20) or
+                (next_["Very_High"]["percent"] > curr["Very_High"]["percent"] and next_["Very_High"]["percent"] >= 20)
+            ):
+                anxiety_trigger = True
+                break
+
+        for i in range(len(result["stress"]) - 1):
+            curr = result["stress"][i]
+            next_ = result["stress"][i + 1]
+            if (
+                (next_["High"]["percent"] > curr["High"]["percent"] and next_["High"]["percent"] >= 20) or
+                (next_["Very_High"]["percent"] > curr["Very_High"]["percent"] and next_["Very_High"]["percent"] >= 20)
+            ):
+                stress_trigger = True
+                break
+
+        result["depression_trigger"] = depression_trigger
+        result["stress_trigger"] = stress_trigger
+        result["anxiety_trigger"] = anxiety_trigger
 
         return result
 

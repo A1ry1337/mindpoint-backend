@@ -126,6 +126,9 @@ class PeriodSeverityItem(Schema):
 
 class PeriodSeverityResponse(Schema):
     period: Literal["week", "month", "year"]
+    depression_trigger: bool
+    anxiety_trigger: bool
+    stress_trigger: bool
     depression: List[PeriodSeverityItem]
     anxiety: List[PeriodSeverityItem]
     stress: List[PeriodSeverityItem]
