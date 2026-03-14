@@ -22,7 +22,8 @@ class PeriodData(Schema):
     test_count: int
 
 class TestCountOut(Schema):
-    period: Literal["day", "week", "month", "year"]
+    period: Literal["week", "month", "year"]
+    recommendation_trigger: bool
     periods: List[PeriodData]
 
 class CountChangeSchema(Schema):

@@ -36,23 +36,22 @@ class DassAnalyticsUtils:
         Возвращает начало и конец периода с учётом смещения offset (0 — текущий, 1 — предыдущий и т.д.)
         """
         today = date.today()
-
-        if period == "day":
-            start = today - timedelta(days=offset)
-            end = start
-        elif period == "week":
+        if period == "week":
             end = today - timedelta(weeks=offset)
             start = end - timedelta(days=6)
+            count_days = 7 * 4
         elif period == "month":
             end = today.replace(day=1) - timedelta(days=offset * 30)
             start = end - timedelta(days=30)
+            count_days = 30 * 4
         elif period == "year":
             end = date(today.year - offset, 12, 31)
             start = date(today.year - offset, 1, 1)
+            count_days = 365 * 4
         else:
             raise ValueError("Invalid period type")
 
-        return start, end
+        return start, end, count_days
 
     @staticmethod
     def get_intervals_with_labels(period: str) -> list[tuple[date, date, str]]:

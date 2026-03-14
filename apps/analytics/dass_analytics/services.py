@@ -132,12 +132,16 @@ class StatisticsService:
 
         periods: List[Dict] = []
 
+        test_count = 0
+
         for offset in range(4):
-            start, end = DassAnalyticsUtils.get_period_dates(period, offset)
+            start, end, count_days = DassAnalyticsUtils.get_period_dates(period, offset)
             count = Dass9Result.objects.filter(
                 user_id__in=member_ids,
                 date__range=[start, end]
             ).count()
+
+            test_count += count
 
             entry = {
                 "start": start.isoformat(),
@@ -153,7 +157,30 @@ class StatisticsService:
         # Сортируем по возрастанию (от старого к новому)
         periods.reverse()
 
-        return {"period": period, "periods": periods}
+        rec_trigger = False
+        for i in range(len(periods)):
+            first = periods[i]['test_count']
+            last = first
+
+            for j in range(i + 1, len(periods)):
+                current = periods[j]['test_count']
+
+                if current < last:
+                    last = current
+                    if first - last >= 20:
+                        rec_trigger = True
+                        break
+                else:
+                    break
+
+            if rec_trigger:
+                break
+
+        if not rec_trigger:
+            rec_trigger = True if test_count / (5 * member_ids.count() * count_days) < 0.6 else False
+
+        return {"period": period, "recommendation_trigger": rec_trigger, "periods": periods}
+
 
     @staticmethod
     def get_teams_test_comparison(manager_id: str,
