@@ -80,6 +80,7 @@ class SeverityMetricSchema(Schema):
 class TeamSeveritySchema(Schema):
     team_id: str
     team_name: str
+    recommendation_trigger: bool
     total_members: int
     depression: SeverityMetricSchema
     anxiety: SeverityMetricSchema

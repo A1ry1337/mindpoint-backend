@@ -383,6 +383,7 @@ class StatisticsService:
             team_data = {
                 "team_id": str(team.id),
                 "team_name": team.name,
+                "recommendation_trigger": False,
                 "total_members": total_members,
                 "depression": {},
                 "anxiety": {},
@@ -454,6 +455,7 @@ class StatisticsService:
                             level_counts[level_name] += 1
                             break
 
+                rec_trigger_counter = 0
                 # Заполняем результат для показателя
                 for level_name, _, _ in SEVERITY_LEVELS[metric]:
                     count = level_counts[level_name]
@@ -463,6 +465,10 @@ class StatisticsService:
                         "members": count,
                         "percent": percent
                     }
+
+                    rec_trigger_counter += percent if level_name in ["High", "Very_High"] else 0
+
+                team_data["recommendation_trigger"] = True if rec_trigger_counter >= 20 else False
 
             results.append(team_data)
 
