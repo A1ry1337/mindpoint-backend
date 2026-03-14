@@ -654,8 +654,10 @@ class StatisticsService:
             curr = result["depression"][i]
             next_ = result["depression"][i + 1]
             if (
-                (next_["High"]["percent"] > curr["High"]["percent"] and next_["High"]["percent"] >= 20) or
-                (next_["Very_High"]["percent"] > curr["Very_High"]["percent"] and next_["Very_High"]["percent"] >= 20)
+                    (curr["High"]["percent"] >= 20 and next_["High"]["percent"] >= 20 and next_["High"]["percent"] >
+                     curr["High"]["percent"]) or
+                    (curr["Very_High"]["percent"] >= 20 and next_["Very_High"]["percent"] >= 20 and next_["Very_High"][
+                        "percent"] > curr["Very_High"]["percent"])
             ):
                 depression_trigger = True
                 break
@@ -664,8 +666,10 @@ class StatisticsService:
             curr = result["anxiety"][i]
             next_ = result["anxiety"][i + 1]
             if (
-                (next_["High"]["percent"] > curr["High"]["percent"] and next_["High"]["percent"] >= 20) or
-                (next_["Very_High"]["percent"] > curr["Very_High"]["percent"] and next_["Very_High"]["percent"] >= 20)
+                    (curr["High"]["percent"] >= 20 and next_["High"]["percent"] >= 20 and next_["High"]["percent"] >
+                     curr["High"]["percent"]) or
+                    (curr["Very_High"]["percent"] >= 20 and next_["Very_High"]["percent"] >= 20 and next_["Very_High"][
+                        "percent"] > curr["Very_High"]["percent"])
             ):
                 anxiety_trigger = True
                 break
@@ -674,8 +678,10 @@ class StatisticsService:
             curr = result["stress"][i]
             next_ = result["stress"][i + 1]
             if (
-                (next_["High"]["percent"] > curr["High"]["percent"] and next_["High"]["percent"] >= 20) or
-                (next_["Very_High"]["percent"] > curr["Very_High"]["percent"] and next_["Very_High"]["percent"] >= 20)
+                    (curr["High"]["percent"] >= 20 and next_["High"]["percent"] >= 20 and next_["High"]["percent"] >
+                     curr["High"]["percent"]) or
+                    (curr["Very_High"]["percent"] >= 20 and next_["Very_High"]["percent"] >= 20 and next_["Very_High"][
+                        "percent"] > curr["Very_High"]["percent"])
             ):
                 stress_trigger = True
                 break
