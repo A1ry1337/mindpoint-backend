@@ -71,6 +71,7 @@ class SeverityLevelSchema(Schema):
     percent: Optional[float]
 
 class SeverityMetricSchema(Schema):
+    recommendation_trigger: Optional[bool] = None
     Normal: SeverityLevelSchema
     Mild: SeverityLevelSchema
     Moderate: SeverityLevelSchema
@@ -80,7 +81,6 @@ class SeverityMetricSchema(Schema):
 class TeamSeveritySchema(Schema):
     team_id: str
     team_name: str
-    recommendation_trigger: bool
     total_members: int
     depression: SeverityMetricSchema
     anxiety: SeverityMetricSchema

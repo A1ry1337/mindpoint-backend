@@ -383,7 +383,6 @@ class StatisticsService:
             team_data = {
                 "team_id": str(team.id),
                 "team_name": team.name,
-                "recommendation_trigger": False,
                 "total_members": total_members,
                 "depression": {},
                 "anxiety": {},
@@ -468,7 +467,8 @@ class StatisticsService:
 
                     rec_trigger_counter += percent if level_name in ["High", "Very_High"] else 0
 
-                team_data["recommendation_trigger"] = True if rec_trigger_counter >= 20 else False
+                team_data[metric].update({"recommendation_trigger": False})
+                team_data[metric]["recommendation_trigger"] = True if rec_trigger_counter >= 20 else False
 
             results.append(team_data)
 
