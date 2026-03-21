@@ -36,6 +36,7 @@ LOCAL_APPS = [
     'apps.assessments.mood',
     'apps.manager.management',
     'apps.analytics.dass_analytics',
+    'apps.analytics.user_dass_analytics',
     'apps.employee.settings'
 ]
 
