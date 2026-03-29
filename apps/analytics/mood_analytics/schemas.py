@@ -35,6 +35,7 @@ class TeamsMoodResponseOut(Schema):
 
 class MoodScorePercentOut(Schema):
     score: int          # 1–5
+    count: int
     percent: float      # процент людей
 
 

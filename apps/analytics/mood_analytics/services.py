@@ -194,11 +194,11 @@ class MoodStatisticsService:
 
     @staticmethod
     def get_mood_distribution(
-        is_manager: bool,
-        manager_id: int,
-        user_id: int,
-        period: str,
-        team_ids: Optional[List[UUID]] = None,
+            is_manager: bool,
+            manager_id: int,
+            user_id: int,
+            period: str,
+            team_ids: Optional[List[UUID]] = None,
     ) -> Dict:
 
         days = MoodStatisticsService.PERIOD_TO_DAYS.get(period, 7)
@@ -220,13 +220,7 @@ class MoodStatisticsService:
             .distinct()
         )
 
-        total_members = len(members)
-
-        if total_members == 0:
-            return {"period": period, "points": []}
-
-        # средний скор пользователя за период
-        user_avg_scores = (
+        user_avg_scores = list(
             MoodResult.objects
             .filter(
                 user__in=members,
@@ -236,6 +230,11 @@ class MoodStatisticsService:
             .values("user")
             .annotate(avg_score=Avg("score"))
         )
+
+        total_members = len(user_avg_scores)
+
+        if total_members == 0:
+            return {"period": period, "points": []}
 
         buckets = defaultdict(int)
 
@@ -247,17 +246,19 @@ class MoodStatisticsService:
         scores = []
         rec_counter = 0
         for s in range(1, 6):
-            percent = (buckets.get(s, 0) / total_members) * 100
+            count = buckets.get(s, 0)
+            percent = (count / total_members) * 100
 
             if s in range(1, 3):
                 rec_counter += percent
 
             scores.append({
                 "score": s,
+                "count": count,
                 "percent": round(percent, 2),
             })
 
-        rec_trigger = True if rec_counter >= 40 else False
+        rec_trigger = rec_counter >= 40
 
         return {
             "period": period,
