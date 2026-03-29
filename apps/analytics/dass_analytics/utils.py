@@ -1,6 +1,6 @@
 from calendar import monthrange
 from datetime import date, timedelta
-from typing import List
+from dateutil.relativedelta import relativedelta
 
 
 class DassAnalyticsUtils:
@@ -31,23 +31,42 @@ class DassAnalyticsUtils:
         return start, end, prev_start, prev_end
 
     @staticmethod
-    def get_period_dates(period: str, offset: int) -> (date, date):
-        """
-        Возвращает начало и конец периода с учётом смещения offset (0 — текущий, 1 — предыдущий и т.д.)
-        """
+    def get_period_dates(period: str, offset: int):
         today = date.today()
+
         if period == "week":
-            end = today - timedelta(weeks=offset)
-            start = end - timedelta(days=6)
-            count_days = 7 * 4
+            start_of_week = today - timedelta(days=today.weekday())
+            start = start_of_week - timedelta(weeks=offset)
+
+            if offset == 0:
+                end = today
+            else:
+                end = start + timedelta(days=6)
+
+            count_days = (end - start).days + 1
+
         elif period == "month":
-            end = today.replace(day=1) - timedelta(days=offset * 30)
-            start = end - timedelta(days=30)
-            count_days = 30 * 4
+            current_month_start = today.replace(day=1)
+            start = current_month_start - relativedelta(months=offset)
+
+            if offset == 0:
+                end = today
+            else:
+                end = start + relativedelta(months=1) - timedelta(days=1)
+
+            count_days = (end - start).days + 1
+
         elif period == "year":
-            end = date(today.year - offset, 12, 31)
-            start = date(today.year - offset, 1, 1)
-            count_days = 365 * 4
+            year = today.year - offset
+            start = date(year, 1, 1)
+
+            if offset == 0:
+                end = today
+            else:
+                end = date(year, 12, 31)
+
+            count_days = (end - start).days + 1
+
         else:
             raise ValueError("Invalid period type")
 
