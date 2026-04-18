@@ -1,6 +1,6 @@
 from ninja import Router
 from apps.auth_user.permissions import JWTAuth
-from apps.analytics.user_dass_analytics.schemas import UserLastDassResultOut
+from apps.analytics.user_dass_analytics.schemas import UserLastDassResultOut, UserDassCompletionStatsOut
 from apps.analytics.user_dass_analytics.services import UserDassStatisticsService
 
 router = Router(tags=["Аналитика DASS для пользователя"])
@@ -30,3 +30,25 @@ def get_last_result(request):
     """
     user_id = request.auth["user_id"]
     return UserDassStatisticsService.get_last_result(user_id=user_id)
+
+
+@router.get("/completion_stats", response=UserDassCompletionStatsOut, auth=JWTAuth())
+def get_completion_stats(request):
+    """
+    Возвращает статистику прохождения тестов DASS9 за всё время.
+
+    - total_tests — общее количество прохождений.
+    - completion_percent — процент выполнения норматива.
+
+    Норматив: 5 тестов за каждые 7 дней, отсчёт с даты первого прохождения.
+    Текущая (незакрытая) неделя учитывается пропорционально прошедшим дням.
+
+    Пример: первый тест 1 апреля, сегодня 19 апреля (19 дней).
+    Это 2 полных недели (×5 = 10 тестов) + 5 дней из третьей (5/7×5 ≈ 3.57).
+    Итого ожидается ≈ 13.57 тестов.
+    Если пройдено 10 — completion_percent ≈ 73.7%.
+
+    Если тестов не было — возвращает total_tests=0, completion_percent=0.0.
+    """
+    user_id = request.auth["user_id"]
+    return UserDassStatisticsService.get_completion_stats(user_id=user_id)

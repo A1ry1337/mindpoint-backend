@@ -14,3 +14,9 @@ class UserMetricHistoryOut(Schema):
 class UserLastDassResultOut(Schema):
     date: str
     statistics: List[UserMetricHistoryOut]
+
+
+class UserDassCompletionStatsOut(Schema):
+    total_tests: int
+    completion_percent: float
+    recommendation_trigger: bool
