@@ -1,6 +1,9 @@
-from ninja import Router
+from ninja import Router, Query
+from ninja.errors import HttpError
+
 from apps.auth_user.permissions import JWTAuth
-from apps.analytics.user_dass_analytics.schemas import UserLastDassResultOut, UserDassCompletionStatsOut
+from apps.analytics.user_dass_analytics.schemas import UserLastDassResultOut, UserDassCompletionStatsOut, \
+    UserDassHistoryOut
 from apps.analytics.user_dass_analytics.services import UserDassStatisticsService
 
 router = Router(tags=["Аналитика DASS для пользователя"])
@@ -52,3 +55,31 @@ def get_completion_stats(request):
     """
     user_id = request.auth["user_id"]
     return UserDassStatisticsService.get_completion_stats(user_id=user_id)
+
+
+@router.get("/history", response=UserDassHistoryOut, auth=JWTAuth())
+def get_history(
+        request,
+        period: str = Query("week", description="week | month | year"),
+):
+    """
+    Возвращает историю показателей стресса, тревоги и депрессии по периодам.
+
+    **period=week** — последние 7 прохождений как отдельные точки (от старого к новому).
+    - label      = дата прохождения, например "2025-04-13"
+    - start_date = end_date = дата прохождения
+    - stress / anxiety / depression — фактические баллы этого прохождения
+
+    **period=month** — 4 последних 7-дневных окна (от старого к новому).
+    - label      = "Неделя 1" .. "Неделя 4"
+    - stress / anxiety / depression — среднее по прохождениям внутри окна (0.0 если не было)
+
+    **period=year** — 12 последних календарных месяцев (от старого к новому).
+    - label      = "Апр 2025", "Май 2025" и т.д.
+    - stress / anxiety / depression — среднее по прохождениям внутри месяца (0.0 если не было)
+    """
+    if period not in ("week", "month", "year"):
+        raise HttpError(422, "period must be 'week', 'month' or 'year'")
+
+    user_id = request.auth["user_id"]
+    return UserDassStatisticsService.get_history(user_id=user_id, period=period)
