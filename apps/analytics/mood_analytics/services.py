@@ -1,14 +1,13 @@
 from datetime import date, timedelta
 from typing import List, Optional, Dict
 from uuid import UUID
+from collections import Counter
 
-from django.db.models import Count, Avg
 from django.utils import timezone
-
-from collections import defaultdict
 
 from apps.assessments.mood.models import MoodResult
 from apps.manager.management.models import Team
+
 
 class MoodStatisticsService:
 
@@ -27,9 +26,7 @@ class MoodStatisticsService:
           - month -> 4 недели (текущая + 3 предыдущие)
           - year  -> 12 месяцев (по месяцам)
         """
-        period = period or "week"
-        period = period.lower()
-
+        period = (period or "week").lower()
         today = timezone.now().date()
 
         if period == "week":
@@ -39,37 +36,27 @@ class MoodStatisticsService:
         elif period == "year":
             ranges = MoodStatisticsService._get_year_month_ranges(today)
         else:
-            # по умолчанию неделя
             ranges = MoodStatisticsService._get_week_day_ranges(today)
 
-        # команды менеджера
         teams_qs = Team.objects.filter(manager_id=manager_id)
-
         if team_id:
             teams_qs = teams_qs.filter(id=team_id)
-
         if not is_manager:
             teams_qs = teams_qs.filter(team_leads__id=user_id)
 
-        teams = list(teams_qs)
-
         result_items = []
 
-        for team in teams:
+        for team in teams_qs:
             team_points = []
 
-            for idx, (start_date, end_date, label) in enumerate(ranges):
+            for start_date, end_date, label in ranges:
                 members = team.members.all()
 
                 mood_qs = (
                     MoodResult.objects
-                    .filter(
-                        user__in=members,
-                        date__gte=start_date,
-                        date__lte=end_date,
-                    )
+                    .filter(user__in=members, date__gte=start_date, date__lte=end_date)
                     .values("score")
-                    .annotate(count=Count("id"))
+                    .annotate(count=__import__("django.db.models", fromlist=["Count"]).Count("id"))
                     .order_by("score")
                 )
 
@@ -84,32 +71,23 @@ class MoodStatisticsService:
                 }
 
                 if total_responses > 0:
-                    scores_list = [
-                        {
-                            "score": s,
-                            "count": score_map.get(s, 0),
-                        }
+                    point_data["scores"] = [
+                        {"score": s, "count": score_map.get(s, 0)}
                         for s in range(1, 6)
                     ]
-                    point_data["scores"] = scores_list
 
                 team_points.append(point_data)
 
             rec_trigger = False
-
             for i in range(len(team_points) - 1):
                 prev = team_points[i]
                 curr = team_points[i + 1]
-
                 if not prev.get("scores") or not curr.get("scores"):
                     continue
-
                 prev_total = prev["total_responses"]
                 curr_total = curr["total_responses"]
-
                 prev_avg = sum(x["score"] * x["count"] for x in prev["scores"]) / prev_total if prev_total else 0
                 curr_avg = sum(x["score"] * x["count"] for x in curr["scores"]) / curr_total if curr_total else 0
-
                 if 4 <= prev_avg <= 5 and 1 <= curr_avg <= 3:
                     rec_trigger = True
                     break
@@ -123,12 +101,94 @@ class MoodStatisticsService:
 
         return {"items": result_items}
 
+
+    PERIOD_TO_DAYS = {
+        "week": 7,
+        "month": 31,
+        "year": 365,
+    }
+
+    @staticmethod
+    def get_mood_distribution(
+        is_manager: bool,
+        manager_id: str,
+        user_id: str,
+        period: str,
+        team_ids: Optional[List[UUID]] = None,
+    ) -> Dict:
+        """
+        Возвращает количество прохождений и процентное распределение
+        оценок настроения (1–5) по всем участникам указанных команд
+        за выбранный период.
+
+        period:
+          week  → последние 7 дней
+          month → последние 31 день
+          year  → последние 365 дней
+
+        rec_mood_trigger = True, если 60%+ прохождений имели оценку 1 или 2.
+        """
+        days = MoodStatisticsService.PERIOD_TO_DAYS.get(period, 7)
+
+        today = timezone.now().date()
+        start_date = today - timedelta(days=days - 1)
+
+        # Определяем команды
+        teams_qs = Team.objects.filter(manager_id=manager_id)
+        if team_ids:
+            teams_qs = teams_qs.filter(id__in=team_ids)
+        if not is_manager:
+            teams_qs = teams_qs.filter(team_leads__id=user_id)
+
+        # Участники всех найденных команд (без дублей)
+        member_ids = (
+            Team.objects
+            .filter(id__in=teams_qs.values_list("id", flat=True))
+            .values_list("members", flat=True)
+            .distinct()
+        )
+
+        # Все прохождения за период — каждая запись = одно прохождение
+        scores = list(
+            MoodResult.objects
+            .filter(user__in=member_ids, date__gte=start_date, date__lte=today)
+            .values_list("score", flat=True)
+        )
+
+        total_completions = len(scores)
+        counts = Counter(scores)
+
+        score_distribution = []
+        low_count = 0  # оценки 1 и 2
+
+        for s in range(1, 6):
+            count = counts.get(s, 0)
+            percent = round((count / total_completions) * 100, 2) if total_completions > 0 else 0.0
+            if s <= 2:
+                low_count += count
+            score_distribution.append({"score": s, "count": count, "percent": percent})
+
+        rec_mood_trigger = (
+            (low_count / total_completions) >= 0.60
+            if total_completions > 0
+            else False
+        )
+
+        return {
+            "period": period,
+            "start_date": start_date,
+            "end_date": today,
+            "total_completions": total_completions,
+            "rec_mood_trigger": rec_mood_trigger,
+            "score_distribution": score_distribution,
+        }
+
+    # ------------------------------------------------------------------
+    # helpers для get_teams_mood
+    # ------------------------------------------------------------------
+
     @staticmethod
     def _get_week_day_ranges(today: date):
-        """
-        7 дней: сегодня и 6 предыдущих.
-        Возвращаем список (start_date, end_date, label) для каждого дня.
-        """
         ranges = []
         for i in range(6, -1, -1):
             day = today - timedelta(days=i)
@@ -137,36 +197,23 @@ class MoodStatisticsService:
 
     @staticmethod
     def _get_month_week_ranges(today: date):
-        """
-        4 недели: текущая и 3 предыдущие.
-        Каждая неделя = интервал длиной 7 дней.
-        Отсчёт от today назад.
-        """
         ranges = []
-        # текущая неделя — [today-6, today]
         end = today
         for i in range(4):
             start = end - timedelta(days=6)
-            label = f"Неделя {4 - i}"  # Неделя 4 (самая старая), Неделя 1 (самая свежая)
+            label = f"Неделя {4 - i}"
             ranges.insert(0, (start, end, label))
             end = start - timedelta(days=1)
         return ranges
 
     @staticmethod
     def _get_year_month_ranges(today: date):
-        """
-        12 месяцев: текущий и 11 предыдущих.
-        Для простоты считаем:
-          start = первое число месяца
-          end   = последнее число месяца
-        """
         ranges = []
         year = today.year
         month = today.month
 
         for _ in range(12):
             start = date(year, month, 1)
-            # вычисляем конец месяца
             if month == 12:
                 next_month = date(year + 1, 1, 1)
             else:
@@ -176,100 +223,9 @@ class MoodStatisticsService:
             label = start.strftime("%m.%Y")
             ranges.insert(0, (start, end, label))
 
-            # предыдущий месяц
             month -= 1
             if month == 0:
                 month = 12
                 year -= 1
 
         return ranges
-
-
-    PERIOD_TO_DAYS = {
-        "day": 1,
-        "week": 7,
-        "month": 31,
-        "year": 365,
-    }
-
-    @staticmethod
-    def get_mood_distribution(
-            is_manager: bool,
-            manager_id: int,
-            user_id: int,
-            period: str,
-            team_ids: Optional[List[UUID]] = None,
-    ) -> Dict:
-
-        days = MoodStatisticsService.PERIOD_TO_DAYS.get(period, 7)
-
-        today = timezone.now().date()
-        start_date = today - timedelta(days=days - 1)
-
-        teams_qs = Team.objects.filter(manager_id=manager_id)
-        if team_ids:
-            teams_qs = teams_qs.filter(id__in=team_ids)
-
-        if not is_manager:
-            teams_qs = teams_qs.filter(team_leads__id=user_id)
-
-        members = (
-            Team.objects
-            .filter(id__in=teams_qs.values_list("id", flat=True))
-            .values_list("members", flat=True)
-            .distinct()
-        )
-
-        user_avg_scores = list(
-            MoodResult.objects
-            .filter(
-                user__in=members,
-                date__gte=start_date,
-                date__lte=today,
-            )
-            .values("user")
-            .annotate(avg_score=Avg("score"))
-        )
-
-        total_members = len(user_avg_scores)
-
-        if total_members == 0:
-            return {"period": period, "points": []}
-
-        buckets = defaultdict(int)
-
-        for row in user_avg_scores:
-            score = round(row["avg_score"])
-            score = max(1, min(5, int(score)))
-            buckets[score] += 1
-
-        scores = []
-        rec_counter = 0
-        for s in range(1, 6):
-            count = buckets.get(s, 0)
-            percent = (count / total_members) * 100
-
-            if s in range(1, 3):
-                rec_counter += percent
-
-            scores.append({
-                "score": s,
-                "count": count,
-                "percent": round(percent, 2),
-            })
-
-        rec_trigger = rec_counter >= 40
-
-        return {
-            "period": period,
-            "points": [
-                {
-                    "recommendation_trigger": rec_trigger,
-                    "period_label": f"Последние {days} дней",
-                    "start_date": start_date,
-                    "end_date": today,
-                    "total_members": total_members,
-                    "scores": scores,
-                }
-            ],
-        }

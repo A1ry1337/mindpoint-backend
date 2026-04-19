@@ -32,27 +32,21 @@ class TeamsMoodRequestIn(Schema):
 class TeamsMoodResponseOut(Schema):
     items: List[TeamMoodStatsOut]
 
-
 class MoodScorePercentOut(Schema):
-    score: int          # 1–5
-    count: int
-    percent: float      # процент людей
-
-
-class MoodPeriodDistributionOut(Schema):
-    period_label: str
-    start_date: date
-    end_date: date
-    total_members: int
-    recommendation_trigger: bool
-    scores: List[MoodScorePercentOut]
+    score: int      # 1–5
+    count: int      # количество прохождений с этой оценкой
+    percent: float  # процент от total_completions
 
 
 class TeamsMoodDistributionRequestIn(Schema):
-    period: str                     # day | week | month | year
+    period: str                     # week | month | year
     team_ids: Optional[List[UUID]] = None
 
 
 class TeamsMoodDistributionResponseOut(Schema):
     period: str
-    points: List[MoodPeriodDistributionOut]
+    start_date: date
+    end_date: date
+    total_completions: int          # всего прохождений за период
+    rec_mood_trigger: bool          # 60%+ оценок 1 или 2
+    score_distribution: List[MoodScorePercentOut]  # всегда 5 элементов (1–5)
