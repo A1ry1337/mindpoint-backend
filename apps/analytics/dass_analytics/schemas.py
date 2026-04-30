@@ -144,6 +144,7 @@ class TeamCoverageSchema(Schema):
     completed_tests: int
     max_possible_tests: int
     coverage_percent: float
+    recommendation_trigger: bool
 
 class TestingCoverageResponse(Schema):
     period: Literal["week", "month", "year"]
