@@ -50,17 +50,12 @@ class RiskCategorySchema(Schema):
     recommendation_trigger: bool
     risk_percent: Optional[float]
 
-class RiskTeamSchema(Schema):
-    team_id: str
-    team_name: str
+class RiskTeamsOut(Schema):
+    period: Literal["day", "week", "month", "year"]
     total_members: int
-
     depression: RiskCategorySchema
     anxiety: RiskCategorySchema
     stress: RiskCategorySchema
-
-class RiskTeamsOut(Schema):
-    teams: List[RiskTeamSchema]
 
 class RiskTeamsIn(Schema):
     team_ids: Optional[List[str]] = None

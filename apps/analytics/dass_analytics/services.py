@@ -246,11 +246,6 @@ class StatisticsService:
             team_ids: Optional[List[str]] = None,
             period: str = "day"
     ) -> Dict[str, any]:
-        """
-        Возвращает процент сотрудников в зоне риска по категориям
-        для всех или выбранных команд за указанный период.
-        """
-        # Определяем дату начала периода
         today = date.today()
         days_map = {"day": 1, "week": 7, "month": 31, "year": 365}
         days = days_map.get(period, 1)
@@ -263,60 +258,59 @@ class StatisticsService:
         if not is_manager:
             teams_qs = teams_qs.filter(team_leads__id=user_id)
 
-        results = []
-
+        # Собираем всех участников из всех выбранных команд
+        all_member_ids = set()
         for team in teams_qs:
-            member_ids = list(team.members.values_list("id", flat=True))
-            total_members = len(member_ids)
+            all_member_ids.update(team.members.values_list("id", flat=True))
 
-            if total_members == 0:
-                results.append({
-                    "team_id": str(team.id),
-                    "team_name": team.name,
-                    "total_members": 0,
-                    "depression": {"risk_members": 0, "risk_percent": None},
-                    "anxiety": {"risk_members": 0, "risk_percent": None},
-                    "stress": {"risk_members": 0, "risk_percent": None},
-                })
-                continue
+        total_members = len(all_member_ids)
 
-            # ---- ДЕПРЕССИЯ >= 5 ----
-            dep_members = Dass9Result.objects.filter(
-                user_id__in=member_ids,
-                depression_score__gte=5,
-                date__range=[start_date, end_date]
-            ).values_list("user_id", flat=True).distinct().count()
-            dep_percent = round(dep_members / total_members * 100, 2) if total_members else None
-            dep_rec_trigger = True if dep_percent >= 40 else False
+        if total_members == 0:
+            return {
+                "period": period,
+                "total_members": 0,
+                "depression": {"risk_members": 0, "risk_percent": None, "recommendation_trigger": False},
+                "anxiety": {"risk_members": 0, "risk_percent": None, "recommendation_trigger": False},
+                "stress": {"risk_members": 0, "risk_percent": None, "recommendation_trigger": False},
+            }
 
-            # ---- ТРЕВОГА >= 4 ----
-            anx_members = Dass9Result.objects.filter(
-                user_id__in=member_ids,
-                anxiety_score__gte=4,
-                date__range=[start_date, end_date]
-            ).values_list("user_id", flat=True).distinct().count()
-            anx_percent = round(anx_members / total_members * 100, 2) if total_members else None
-            anx_rec_trigger = True if anx_percent >= 40 else False
+        # ---- ДЕПРЕССИЯ >= 5 ----
+        dep_members = Dass9Result.objects.filter(
+            user_id__in=all_member_ids,
+            depression_score__gte=5,
+            date__range=[start_date, end_date]
+        ).values_list("user_id", flat=True).distinct().count()
+        dep_percent = round(dep_members / total_members * 100, 2)
+        dep_rec_trigger = dep_percent >= 40
 
-            # ---- СТРЕСС >= 5 ----
-            str_members = Dass9Result.objects.filter(
-                user_id__in=member_ids,
-                stress_score__gte=5,
-                date__range=[start_date, end_date]
-            ).values_list("user_id", flat=True).distinct().count()
-            str_percent = round(str_members / total_members * 100, 2) if total_members else None
-            str_rec_trigger = True if str_percent >= 40 else False
+        # ---- ТРЕВОГА >= 4 ----
+        anx_members = Dass9Result.objects.filter(
+            user_id__in=all_member_ids,
+            anxiety_score__gte=4,
+            date__range=[start_date, end_date]
+        ).values_list("user_id", flat=True).distinct().count()
+        anx_percent = round(anx_members / total_members * 100, 2)
+        anx_rec_trigger = anx_percent >= 40
 
-            results.append({
-                "team_id": str(team.id),
-                "team_name": team.name,
-                "total_members": total_members,
-                "depression": {"risk_members": dep_members, "risk_percent": dep_percent, "recommendation_trigger": dep_rec_trigger},
-                "anxiety": {"risk_members": anx_members, "risk_percent": anx_percent, "recommendation_trigger": anx_rec_trigger},
-                "stress": {"risk_members": str_members, "risk_percent": str_percent, "recommendation_trigger": str_rec_trigger},
-            })
+        # ---- СТРЕСС >= 5 ----
+        str_members = Dass9Result.objects.filter(
+            user_id__in=all_member_ids,
+            stress_score__gte=5,
+            date__range=[start_date, end_date]
+        ).values_list("user_id", flat=True).distinct().count()
+        str_percent = round(str_members / total_members * 100, 2)
+        str_rec_trigger = str_percent >= 40
 
-        return {"teams": results}
+        return {
+            "period": period,
+            "total_members": total_members,
+            "depression": {"risk_members": dep_members, "risk_percent": dep_percent,
+                           "recommendation_trigger": dep_rec_trigger},
+            "anxiety": {"risk_members": anx_members, "risk_percent": anx_percent,
+                        "recommendation_trigger": anx_rec_trigger},
+            "stress": {"risk_members": str_members, "risk_percent": str_percent,
+                       "recommendation_trigger": str_rec_trigger},
+        }
 
     @staticmethod
     def get_severity_distribution_by_team(
