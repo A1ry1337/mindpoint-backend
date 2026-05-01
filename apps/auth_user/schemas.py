@@ -16,3 +16,4 @@ class LoginResponse(Schema):
     fullname: str
     email: str
     is_manager: bool
+    is_teamlead: bool

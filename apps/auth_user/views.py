@@ -73,6 +73,7 @@ def login(request, data: UserCreateSchema):
         "fullname": user.full_name,
         "email": user.email,
         "is_manager": user.is_manager,
+        "is_teamlead": user.is_teamlead,
     })
 
     response.set_cookie(
