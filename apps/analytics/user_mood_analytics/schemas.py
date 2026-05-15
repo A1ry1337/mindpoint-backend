@@ -1,24 +1,35 @@
-from ninja import Schema
-from typing import List, Literal
 from datetime import date
+from typing import List, Literal
+
+from ninja import Schema
 
 
 class UserMoodScorePercentOut(Schema):
-    score: int          # 1–5
+    score: int
     count: int
-    percent: float      # процент от общего числа прохождений
+    percent: float
 
 
 class UserMoodPointOut(Schema):
     """
-    Одна точка на графике.
+    Одна точка графика.
 
-    week  → label = "2025-04-13" (конкретная дата), start_date == end_date
-    month → label = "Неделя 1",  start_date/end_date — границы 7-дневного окна
-    year  → label = "Апр 2025",  start_date/end_date — границы месяца
+    week:
+        label = "2025-04-13"
+        start_date == end_date
+        score = score за конкретный день
 
-    score — фактическая оценка (week) или среднее за период (month/year).
-    0.0 если прохождений не было.
+    month:
+        label = "Неделя 1"
+        start_date / end_date = границы недели
+        score = средний score за неделю
+
+    year:
+        label = "Апр 2025"
+        start_date / end_date = границы месяца
+        score = средний score за месяц
+
+    Если данных за период нет, score = 0.0.
     """
     label: str
     start_date: date
@@ -29,15 +40,14 @@ class UserMoodPointOut(Schema):
 class UserMoodHistoryOut(Schema):
     period: Literal["week", "month", "year"]
 
-    # Количество прохождений всего за период + проценты по категориям (1–5)
     total_completions: int
     score_distribution: List[UserMoodScorePercentOut]
 
-    # Триггер 1: 60%+ ответов были оценкой 1 или 2
     rec_mood_trigger: bool
-
-    # Триггер 2: есть хотя бы две даты подряд с оценкой <= 2
     consecutive_low_trigger: bool
 
-    # Точки графика: 7 (week) / 31 (month) / 365 (year)
+    # Количество точек:
+    # week  -> 7
+    # month -> 4
+    # year  -> 12
     points: List[UserMoodPointOut]
