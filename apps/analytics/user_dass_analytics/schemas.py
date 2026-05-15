@@ -1,6 +1,8 @@
-from ninja import Schema
-from typing import List, Optional, Literal
 from datetime import date
+from typing import List, Optional, Literal
+
+from ninja import Schema
+
 
 class UserMetricHistoryOut(Schema):
     type: Literal["stress", "anxiety", "depression"]
@@ -24,14 +26,23 @@ class UserDassCompletionStatsOut(Schema):
 
 class UserDassMetricPointOut(Schema):
     """
-    Одна точка на графике.
+    Одна точка графика DASS9.
 
-    week  → label = "2025-04-13" (дата прохождения), start_date == end_date
-    month → label = "Неделя 1",  start_date/end_date — границы 7-дневного окна
-    year  → label = "Апр 2025",  start_date/end_date — границы месяца
+    period=week:
+    - label = дата, например "2026-05-15"
+    - start_date = end_date = дата дня
 
-    stress / anxiety / depression — фактическое значение (week) или
-    среднее за период (month/year); 0.0 если прохождений не было.
+    period=month:
+    - label = "Неделя 1", "Неделя 2", "Неделя 3", "Неделя 4"
+    - start_date / end_date = границы недели
+
+    period=year:
+    - label = "Янв 2026", "Фев 2026" и т.д.
+    - start_date / end_date = границы месяца
+
+    stress / anxiety / depression:
+    - среднее значение за период
+    - 0.0, если данных за период нет
     """
     label: str
     start_date: date
